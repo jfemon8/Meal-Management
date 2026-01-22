@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { transactionService } from '../../services/mealService';
 import { format } from 'date-fns';
 import { bn } from 'date-fns/locale';
-import { FiDollarSign, FiArrowUp, FiArrowDown, FiFilter } from 'react-icons/fi';
+import { FiArrowUp, FiArrowDown, FiFilter } from 'react-icons/fi';
+import BDTIcon from '../../components/Icons/BDTIcon';
 
 const Transactions = () => {
     const [transactions, setTransactions] = useState([]);

@@ -6,7 +6,6 @@ import {
     FiHome,
     FiUser,
     FiCalendar,
-    FiDollarSign,
     FiFileText,
     FiUsers,
     FiSettings,
@@ -19,6 +18,7 @@ import {
     FiSun,
     FiMoon
 } from 'react-icons/fi';
+import BDTIcon from '../Icons/BDTIcon';
 
 const Layout = () => {
     const { user, logout, isManager, isAdmin } = useAuth();
@@ -35,14 +35,14 @@ const Layout = () => {
     const menuItems = [
         { path: '/dashboard', icon: FiHome, label: 'ড্যাশবোর্ড' },
         { path: '/meals', icon: FiCalendar, label: 'মিল ক্যালেন্ডার' },
-        { path: '/transactions', icon: FiDollarSign, label: 'লেনদেন' },
+        { path: '/transactions', icon: BDTIcon, label: 'লেনদেন' },
         { path: '/reports/monthly', icon: FiFileText, label: 'মাসিক রিপোর্ট' },
         { path: '/profile', icon: FiUser, label: 'প্রোফাইল' },
     ];
 
     const managerMenuItems = [
         { path: '/manager/users', icon: FiUsers, label: 'সকল ইউজার' },
-        { path: '/manager/balance', icon: FiDollarSign, label: 'ব্যালেন্স ম্যানেজ' },
+        { path: '/manager/balance', icon: BDTIcon, label: 'ব্যালেন্স ম্যানেজ' },
         { path: '/manager/breakfast', icon: FiCoffee, label: 'নাস্তা ম্যানেজ' },
         { path: '/manager/daily-meals', icon: FiClipboard, label: 'দৈনিক মিল' },
         { path: '/manager/month-settings', icon: FiSettings, label: 'মাসের সেটিংস' },

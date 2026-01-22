@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { userService } from '../../services/mealService';
 import toast from 'react-hot-toast';
-import { FiSearch, FiUser, FiDollarSign, FiPlus, FiMinus } from 'react-icons/fi';
+import { FiSearch, FiUser, FiPlus, FiMinus } from 'react-icons/fi';
+import BDTIcon from '../../components/Icons/BDTIcon';
 
 const UserBalance = () => {
     const [users, setUsers] = useState([]);
@@ -202,7 +203,7 @@ const UserBalance = () => {
                             <div>
                                 <label className="label">পরিমাণ (টাকা)</label>
                                 <div className="relative">
-                                    <FiDollarSign className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                                    <BDTIcon className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
                                     <input
                                         type="number"
                                         value={formData.amount}

@@ -3,7 +3,8 @@ import { breakfastService, userService } from '../../services/mealService';
 import toast from 'react-hot-toast';
 import { format, startOfMonth, endOfMonth } from 'date-fns';
 import { bn } from 'date-fns/locale';
-import { FiCoffee, FiDollarSign, FiUsers, FiCheck, FiTrash2 } from 'react-icons/fi';
+import { FiCoffee, FiUsers, FiCheck, FiTrash2 } from 'react-icons/fi';
+import BDTIcon from '../../components/Icons/BDTIcon';
 
 const BreakfastManagement = () => {
     const [breakfasts, setBreakfasts] = useState([]);
@@ -156,7 +157,7 @@ const BreakfastManagement = () => {
                             <div>
                                 <label className="label">মোট খরচ (টাকা)</label>
                                 <div className="relative">
-                                    <FiDollarSign className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                                    <BDTIcon className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
                                     <input
                                         type="number"
                                         value={formData.totalCost}

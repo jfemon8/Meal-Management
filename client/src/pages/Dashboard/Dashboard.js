@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { mealService, monthSettingsService } from '../../services/mealService';
-import { FiCalendar, FiDollarSign, FiTrendingUp, FiUsers } from 'react-icons/fi';
+import { FiCalendar, FiTrendingUp, FiUsers } from 'react-icons/fi';
 import { format } from 'date-fns';
 import { bn } from 'date-fns/locale';
+import BDTIcon from '../../components/Icons/BDTIcon';
 
 const Dashboard = () => {
     const { user, isManager } = useAuth();
@@ -73,19 +74,19 @@ const Dashboard = () => {
             {/* Balance Cards */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <StatCard
-                    icon={FiDollarSign}
+                    icon={BDTIcon}
                     title="নাস্তা ব্যালেন্স"
                     value={`৳${user?.balances?.breakfast || 0}`}
                     color="text-blue-600"
                 />
                 <StatCard
-                    icon={FiDollarSign}
+                    icon={BDTIcon}
                     title="দুপুরের ব্যালেন্স"
                     value={`৳${user?.balances?.lunch || 0}`}
                     color="text-green-600"
                 />
                 <StatCard
-                    icon={FiDollarSign}
+                    icon={BDTIcon}
                     title="রাতের ব্যালেন্স"
                     value={`৳${user?.balances?.dinner || 0}`}
                     color="text-purple-600"

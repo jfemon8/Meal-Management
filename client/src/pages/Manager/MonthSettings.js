@@ -3,7 +3,8 @@ import { monthSettingsService } from '../../services/mealService';
 import toast from 'react-hot-toast';
 import { format, startOfMonth, endOfMonth, addMonths, subMonths } from 'date-fns';
 import { bn } from 'date-fns/locale';
-import { FiCalendar, FiDollarSign, FiSave, FiChevronLeft, FiChevronRight, FiLock } from 'react-icons/fi';
+import { FiCalendar, FiSave, FiChevronLeft, FiChevronRight, FiLock } from 'react-icons/fi';
+import BDTIcon from '../../components/Icons/BDTIcon';
 
 const MonthSettings = () => {
     const [currentMonth, setCurrentMonth] = useState(new Date());
@@ -175,7 +176,7 @@ const MonthSettings = () => {
                         <div>
                             <label className="label">দুপুরের মিল রেট (টাকা/মিল)</label>
                             <div className="relative">
-                                <FiDollarSign className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                                <BDTIcon className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
                                 <input
                                     type="number"
                                     value={formData.lunchRate}
@@ -190,7 +191,7 @@ const MonthSettings = () => {
                         <div>
                             <label className="label">রাতের মিল রেট (টাকা/মিল)</label>
                             <div className="relative">
-                                <FiDollarSign className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                                <BDTIcon className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
                                 <input
                                     type="number"
                                     value={formData.dinnerRate}

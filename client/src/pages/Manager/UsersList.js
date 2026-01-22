@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { userService } from '../../services/mealService';
-import { FiSearch, FiUser, FiMail, FiDollarSign } from 'react-icons/fi';
+import { FiSearch, FiUser, FiMail } from 'react-icons/fi';
+import BDTIcon from '../../components/Icons/BDTIcon';
 
 const UsersList = () => {
     const [users, setUsers] = useState([]);
