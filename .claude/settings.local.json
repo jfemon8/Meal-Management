@@ -14,7 +14,11 @@
       "Read(//d/Projects/MealManagement/**)",
       "Bash(taskkill //F //PID 11116)",
       "Bash(taskkill //F //PID 2988)",
-      "Bash(taskkill //F //PID 19440)"
+      "Bash(taskkill //F //PID 19440)",
+      "Bash(npm install:*)",
+      "Bash(npm start)",
+      "Bash(taskkill:*)",
+      "Bash(grep:*)"
     ]
   }
 }
