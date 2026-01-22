@@ -1,0 +1,228 @@
+import api from './api';
+
+export const mealService = {
+    // Get meal status for date range
+    getMealStatus: async (startDate, endDate, userId = null) => {
+        const params = { startDate, endDate };
+        if (userId) params.userId = userId;
+        const response = await api.get('/meals/status', { params });
+        return response.data;
+    },
+
+    // Toggle meal on/off
+    toggleMeal: async (date, isOn, userId = null, count = 1) => {
+        const data = { date, isOn, count };
+        if (userId) data.userId = userId;
+        const response = await api.put('/meals/toggle', data);
+        return response.data;
+    },
+
+    // Update meal count (Manager+)
+    updateMealCount: async (date, userId, count, notes = '') => {
+        const response = await api.put('/meals/count', { date, userId, count, notes });
+        return response.data;
+    },
+
+    // Get meal summary for a month
+    getMealSummary: async (year, month, userId = null) => {
+        const params = { year, month };
+        if (userId) params.userId = userId;
+        const response = await api.get('/meals/summary', { params });
+        return response.data;
+    },
+
+    // Get daily meals for all users (Manager+)
+    getDailyMeals: async (date) => {
+        const response = await api.get('/meals/daily', { params: { date } });
+        return response.data;
+    }
+};
+
+export const breakfastService = {
+    // Get breakfast records
+    getBreakfasts: async (startDate, endDate) => {
+        const response = await api.get('/breakfast', { params: { startDate, endDate } });
+        return response.data;
+    },
+
+    // Get user's breakfast records
+    getUserBreakfasts: async (startDate, endDate) => {
+        const response = await api.get('/breakfast/user', { params: { startDate, endDate } });
+        return response.data;
+    },
+
+    // Submit breakfast cost (Manager+)
+    submitBreakfast: async (date, totalCost, participants, description = '') => {
+        const response = await api.post('/breakfast', { date, totalCost, participants, description });
+        return response.data;
+    },
+
+    // Deduct breakfast cost (Manager+)
+    deductBreakfast: async (id) => {
+        const response = await api.post(`/breakfast/${id}/deduct`);
+        return response.data;
+    },
+
+    // Update breakfast (Manager+)
+    updateBreakfast: async (id, data) => {
+        const response = await api.put(`/breakfast/${id}`, data);
+        return response.data;
+    },
+
+    // Delete breakfast (Manager+)
+    deleteBreakfast: async (id) => {
+        const response = await api.delete(`/breakfast/${id}`);
+        return response.data;
+    }
+};
+
+export const userService = {
+    // Get all users (Manager+)
+    getAllUsers: async () => {
+        const response = await api.get('/users');
+        return response.data;
+    },
+
+    // Get user by ID
+    getUser: async (id) => {
+        const response = await api.get(`/users/${id}`);
+        return response.data;
+    },
+
+    // Update user profile
+    updateUser: async (id, data) => {
+        const response = await api.put(`/users/${id}`, data);
+        return response.data;
+    },
+
+    // Update user role (Admin+)
+    updateUserRole: async (id, role) => {
+        const response = await api.put(`/users/${id}/role`, { role });
+        return response.data;
+    },
+
+    // Update user balance (Manager+)
+    updateBalance: async (id, amount, balanceType, type, description = '') => {
+        const response = await api.put(`/users/${id}/balance`, { amount, balanceType, type, description });
+        return response.data;
+    },
+
+    // Update user status (Admin+)
+    updateUserStatus: async (id, isActive) => {
+        const response = await api.put(`/users/${id}/status`, { isActive });
+        return response.data;
+    },
+
+    // Delete user (SuperAdmin)
+    deleteUser: async (id) => {
+        const response = await api.delete(`/users/${id}`);
+        return response.data;
+    }
+};
+
+export const monthSettingsService = {
+    // Get month settings
+    getSettings: async (year, month) => {
+        const params = {};
+        if (year && month) {
+            params.year = year;
+            params.month = month;
+        }
+        const response = await api.get('/month-settings', { params });
+        return response.data;
+    },
+
+    // Get current month settings
+    getCurrentSettings: async () => {
+        const response = await api.get('/month-settings/current');
+        return response.data;
+    },
+
+    // Create/Update month settings (Manager+)
+    saveSettings: async (data) => {
+        const response = await api.post('/month-settings', data);
+        return response.data;
+    },
+
+    // Finalize month (Manager+)
+    finalizeMonth: async (id) => {
+        const response = await api.put(`/month-settings/${id}/finalize`);
+        return response.data;
+    }
+};
+
+export const holidayService = {
+    // Get holidays
+    getHolidays: async (year, month = null) => {
+        const params = { year };
+        if (month) params.month = month;
+        const response = await api.get('/holidays', { params });
+        return response.data;
+    },
+
+    // Add holiday (Admin+)
+    addHoliday: async (data) => {
+        const response = await api.post('/holidays', data);
+        return response.data;
+    },
+
+    // Update holiday (Admin+)
+    updateHoliday: async (id, data) => {
+        const response = await api.put(`/holidays/${id}`, data);
+        return response.data;
+    },
+
+    // Delete holiday (Admin+)
+    deleteHoliday: async (id) => {
+        const response = await api.delete(`/holidays/${id}`);
+        return response.data;
+    },
+
+    // Seed default holidays (Admin+)
+    seedHolidays: async (year) => {
+        const response = await api.post('/holidays/seed', { year });
+        return response.data;
+    }
+};
+
+export const transactionService = {
+    // Get user's transactions
+    getTransactions: async (params = {}) => {
+        const response = await api.get('/transactions', { params });
+        return response.data;
+    },
+
+    // Get transactions for a specific user (Manager+)
+    getUserTransactions: async (userId, params = {}) => {
+        const response = await api.get(`/transactions/user/${userId}`, { params });
+        return response.data;
+    },
+
+    // Get all transactions (Manager+)
+    getAllTransactions: async (params = {}) => {
+        const response = await api.get('/transactions/all', { params });
+        return response.data;
+    }
+};
+
+export const reportService = {
+    // Get monthly report
+    getMonthlyReport: async (year, month, userId = null) => {
+        const params = { year, month };
+        if (userId) params.userId = userId;
+        const response = await api.get('/reports/monthly', { params });
+        return response.data;
+    },
+
+    // Get all users report (Manager+)
+    getAllUsersReport: async (year, month) => {
+        const response = await api.get('/reports/all-users', { params: { year, month } });
+        return response.data;
+    },
+
+    // Get daily report (Manager+)
+    getDailyReport: async (date) => {
+        const response = await api.get('/reports/daily', { params: { date } });
+        return response.data;
+    }
+};

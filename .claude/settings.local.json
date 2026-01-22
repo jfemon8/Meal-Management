@@ -1,0 +1,20 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(ls:*)",
+      "Bash(npm run seed:superadmin:*)",
+      "Bash(curl:*)",
+      "Bash(netstat:*)",
+      "Bash(findstr :5000)",
+      "Bash(node:*)",
+      "Bash(npm run dev:*)",
+      "Bash(taskkill /F /PID 1224)",
+      "Bash(taskkill //F //PID 1224)",
+      "Bash(findstr:*)",
+      "Read(//d/Projects/MealManagement/**)",
+      "Bash(taskkill //F //PID 11116)",
+      "Bash(taskkill //F //PID 2988)",
+      "Bash(taskkill //F //PID 19440)"
+    ]
+  }
+}
