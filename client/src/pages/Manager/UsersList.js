@@ -96,15 +96,15 @@ const UsersList = () => {
                             <div className="flex flex-wrap gap-4">
                                 <div className="text-center">
                                     <p className="text-sm text-gray-500">নাস্তা</p>
-                                    <p className="font-bold text-blue-600">৳{user.balances?.breakfast || 0}</p>
+                                    <p className="font-bold text-blue-600">৳{user.balances?.breakfast?.amount ?? user.balances?.breakfast ?? 0}</p>
                                 </div>
                                 <div className="text-center">
                                     <p className="text-sm text-gray-500">দুপুর</p>
-                                    <p className="font-bold text-green-600">৳{user.balances?.lunch || 0}</p>
+                                    <p className="font-bold text-green-600">৳{user.balances?.lunch?.amount ?? user.balances?.lunch ?? 0}</p>
                                 </div>
                                 <div className="text-center">
                                     <p className="text-sm text-gray-500">রাত</p>
-                                    <p className="font-bold text-purple-600">৳{user.balances?.dinner || 0}</p>
+                                    <p className="font-bold text-purple-600">৳{user.balances?.dinner?.amount ?? user.balances?.dinner ?? 0}</p>
                                 </div>
                                 <div className="text-center">
                                     <p className="text-sm text-gray-500">স্ট্যাটাস</p>

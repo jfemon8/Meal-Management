@@ -109,15 +109,15 @@ const MonthlyReport = () => {
                         <h3 className="font-semibold text-lg mb-4">বর্তমান ব্যালেন্স</h3>
                         <div className="grid grid-cols-3 gap-4">
                             <div className="bg-gray-50 rounded-lg p-4 text-center">
-                                <p className="text-xl font-bold text-blue-600">৳{report.user.balances.breakfast}</p>
+                                <p className="text-xl font-bold text-blue-600">৳{report.user.balances.breakfast?.amount ?? report.user.balances.breakfast}</p>
                                 <p className="text-sm text-gray-600">নাস্তা</p>
                             </div>
                             <div className="bg-gray-50 rounded-lg p-4 text-center">
-                                <p className="text-xl font-bold text-green-600">৳{report.user.balances.lunch}</p>
+                                <p className="text-xl font-bold text-green-600">৳{report.user.balances.lunch?.amount ?? report.user.balances.lunch}</p>
                                 <p className="text-sm text-gray-600">দুপুর</p>
                             </div>
                             <div className="bg-gray-50 rounded-lg p-4 text-center">
-                                <p className="text-xl font-bold text-purple-600">৳{report.user.balances.dinner}</p>
+                                <p className="text-xl font-bold text-purple-600">৳{report.user.balances.dinner?.amount ?? report.user.balances.dinner}</p>
                                 <p className="text-sm text-gray-600">রাত</p>
                             </div>
                         </div>
