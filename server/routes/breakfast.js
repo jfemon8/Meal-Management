@@ -159,10 +159,20 @@ router.post('/:id/deduct', protect, isManager, async (req, res) => {
             const user = await User.findById(participant.user);
             if (!user) continue;
 
-            const previousBalance = user.balances.breakfast;
+            // Check if balance is frozen
+            if (user.balances.breakfast.isFrozen) {
+                deductionResults.push({
+                    user: user.name,
+                    cost: participant.cost,
+                    error: 'Balance is frozen'
+                });
+                continue;
+            }
+
+            const previousBalance = user.balances.breakfast.amount;
             const newBalance = previousBalance - participant.cost;
 
-            user.balances.breakfast = newBalance;
+            user.balances.breakfast.amount = newBalance;
             await user.save();
 
             // Create transaction record

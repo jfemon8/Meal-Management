@@ -26,6 +26,7 @@ app.use('/api/transactions', require('./routes/transactions'));
 app.use('/api/month-settings', require('./routes/monthSettings'));
 app.use('/api/holidays', require('./routes/holidays'));
 app.use('/api/reports', require('./routes/reports'));
+app.use('/api/wallet', require('./routes/wallet'));
 
 // Error handling middleware
 app.use((err, req, res, next) => {

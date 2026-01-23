@@ -67,4 +67,29 @@ const isSuperAdmin = (req, res, next) => {
     next();
 };
 
-module.exports = { protect, authorize, isManager, isAdmin, isSuperAdmin };
+// Check if user has a specific permission
+const checkPermission = (permission) => {
+    return async (req, res, next) => {
+        try {
+            if (!req.user) {
+                return res.status(401).json({ message: 'অনুমোদন ব্যর্থ' });
+            }
+
+            // Check if user has the permission (role-based or custom)
+            const hasPermission = req.user.hasPermission(permission);
+
+            if (!hasPermission) {
+                return res.status(403).json({
+                    message: 'এই কাজের জন্য আপনার অনুমতি নেই'
+                });
+            }
+
+            next();
+        } catch (error) {
+            console.error('Permission check error:', error);
+            return res.status(500).json({ message: 'অনুমতি যাচাই করতে ব্যর্থ হয়েছে' });
+        }
+    };
+};
+
+module.exports = { protect, authorize, isManager, isAdmin, isSuperAdmin, checkPermission };

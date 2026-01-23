@@ -37,16 +37,88 @@ const userSchema = new mongoose.Schema({
     // Separate balances for different meal types
     balances: {
         breakfast: {
-            type: Number,
-            default: 0
+            amount: {
+                type: Number,
+                default: 0
+            },
+            isFrozen: {
+                type: Boolean,
+                default: false
+            },
+            frozenAt: {
+                type: Date,
+                default: null
+            },
+            frozenBy: {
+                type: mongoose.Schema.Types.ObjectId,
+                ref: 'User',
+                default: null
+            },
+            frozenReason: {
+                type: String,
+                default: ''
+            }
         },
         lunch: {
-            type: Number,
-            default: 0
+            amount: {
+                type: Number,
+                default: 0
+            },
+            isFrozen: {
+                type: Boolean,
+                default: false
+            },
+            frozenAt: {
+                type: Date,
+                default: null
+            },
+            frozenBy: {
+                type: mongoose.Schema.Types.ObjectId,
+                ref: 'User',
+                default: null
+            },
+            frozenReason: {
+                type: String,
+                default: ''
+            }
         },
         dinner: {
+            amount: {
+                type: Number,
+                default: 0
+            },
+            isFrozen: {
+                type: Boolean,
+                default: false
+            },
+            frozenAt: {
+                type: Date,
+                default: null
+            },
+            frozenBy: {
+                type: mongoose.Schema.Types.ObjectId,
+                ref: 'User',
+                default: null
+            },
+            frozenReason: {
+                type: String,
+                default: ''
+            }
+        }
+    },
+    // Negative balance warning settings
+    balanceWarning: {
+        threshold: {
             type: Number,
-            default: 0
+            default: 100 // Warn when any balance goes below 100
+        },
+        notified: {
+            type: Boolean,
+            default: false
+        },
+        lastNotifiedAt: {
+            type: Date,
+            default: null
         }
     },
     isActive: {
@@ -111,7 +183,33 @@ userSchema.methods.matchPassword = async function (enteredPassword) {
 
 // Get total balance
 userSchema.methods.getTotalBalance = function () {
-    return this.balances.breakfast + this.balances.lunch + this.balances.dinner;
+    return (this.balances.breakfast.amount || 0) +
+           (this.balances.lunch.amount || 0) +
+           (this.balances.dinner.amount || 0);
+};
+
+// Check if a specific balance is frozen
+userSchema.methods.isBalanceFrozen = function (balanceType) {
+    if (!['breakfast', 'lunch', 'dinner'].includes(balanceType)) {
+        return false;
+    }
+    return this.balances[balanceType].isFrozen;
+};
+
+// Check if any balance is below warning threshold
+userSchema.methods.hasLowBalance = function () {
+    const threshold = this.balanceWarning.threshold;
+    return (this.balances.breakfast.amount < threshold) ||
+           (this.balances.lunch.amount < threshold) ||
+           (this.balances.dinner.amount < threshold);
+};
+
+// Get balance details for a specific type
+userSchema.methods.getBalanceDetails = function (balanceType) {
+    if (!['breakfast', 'lunch', 'dinner'].includes(balanceType)) {
+        return null;
+    }
+    return this.balances[balanceType];
 };
 
 // Check if user has a specific permission

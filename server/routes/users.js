@@ -148,7 +148,19 @@ router.put('/:id/balance', protect, isManager, [
             return res.status(404).json({ message: 'ইউজার পাওয়া যায়নি' });
         }
 
-        const previousBalance = user.balances[balanceType];
+        // Check if balance is frozen
+        if (user.balances[balanceType].isFrozen) {
+            return res.status(403).json({
+                message: `${balanceType} ব্যালেন্স ফ্রিজ করা আছে। ব্যালেন্স আনফ্রিজ করে তারপর আপডেট করুন।`,
+                freezeInfo: {
+                    frozenAt: user.balances[balanceType].frozenAt,
+                    frozenBy: user.balances[balanceType].frozenBy,
+                    frozenReason: user.balances[balanceType].frozenReason
+                }
+            });
+        }
+
+        const previousBalance = user.balances[balanceType].amount;
         let newBalance;
 
         if (type === 'deposit') {
@@ -159,7 +171,7 @@ router.put('/:id/balance', protect, isManager, [
             newBalance = amount; // Direct adjustment
         }
 
-        user.balances[balanceType] = newBalance;
+        user.balances[balanceType].amount = newBalance;
         await user.save();
 
         // Create transaction record
