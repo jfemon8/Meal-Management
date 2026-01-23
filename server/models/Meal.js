@@ -1,6 +1,6 @@
 const mongoose = require('mongoose');
 
-// This model tracks lunch meal on/off status for each user per day
+// This model tracks meal on/off status for each user per day (lunch and dinner)
 const mealSchema = new mongoose.Schema({
     user: {
         type: mongoose.Schema.Types.ObjectId,
@@ -11,10 +11,10 @@ const mealSchema = new mongoose.Schema({
         type: Date,
         required: true
     },
-    // Meal type - for now only lunch has on/off feature
+    // Meal type - lunch and dinner
     mealType: {
         type: String,
-        enum: ['lunch'],
+        enum: ['lunch', 'dinner'],
         default: 'lunch'
     },
     // Meal status

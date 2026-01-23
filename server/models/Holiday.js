@@ -41,6 +41,17 @@ const holidaySchema = new mongoose.Schema({
         type: Boolean,
         default: true
     },
+    // Source of this holiday (manual or api)
+    source: {
+        type: String,
+        enum: ['manual', 'api'],
+        default: 'manual'
+    },
+    // Last synced timestamp (for API holidays)
+    lastSyncedAt: {
+        type: Date,
+        default: null
+    },
     // Who added this holiday
     addedBy: {
         type: mongoose.Schema.Types.ObjectId,

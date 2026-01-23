@@ -9,6 +9,7 @@ import { FiChevronLeft, FiChevronRight, FiCheck, FiX } from 'react-icons/fi';
 const MealCalendar = () => {
     const { user, isManager } = useAuth();
     const [currentMonth, setCurrentMonth] = useState(new Date());
+    const [mealType, setMealType] = useState('lunch'); // 'lunch' or 'dinner'
     const [mealStatus, setMealStatus] = useState([]);
     const [holidays, setHolidays] = useState([]);
     const [monthSettings, setMonthSettings] = useState(null);
@@ -17,7 +18,7 @@ const MealCalendar = () => {
 
     useEffect(() => {
         loadMonthData();
-    }, [currentMonth]);
+    }, [currentMonth, mealType]);
 
     const loadMonthData = async () => {
         setLoading(true);
@@ -28,12 +29,12 @@ const MealCalendar = () => {
             const endDate = format(endOfMonth(currentMonth), 'yyyy-MM-dd');
 
             const [statusRes, holidaysRes, settingsRes] = await Promise.all([
-                mealService.getMealStatus(startDate, endDate),
+                mealService.getMealStatus(startDate, endDate, null, mealType),
                 holidayService.getHolidays(year, month),
                 monthSettingsService.getSettings(year, month)
             ]);
 
-            setMealStatus(statusRes);
+            setMealStatus(statusRes.meals || statusRes);
             setHolidays(holidaysRes);
             setMonthSettings(settingsRes);
         } catch (error) {
@@ -58,8 +59,9 @@ const MealCalendar = () => {
 
         setUpdating(date);
         try {
-            await mealService.toggleMeal(date, !currentStatus);
-            toast.success(currentStatus ? 'মিল অফ করা হয়েছে' : 'মিল অন করা হয়েছে');
+            await mealService.toggleMeal(date, !currentStatus, null, 1, mealType);
+            const mealTypeBn = mealType === 'lunch' ? 'দুপুরের খাবার' : 'রাতের খাবার';
+            toast.success(currentStatus ? `${mealTypeBn} অফ করা হয়েছে` : `${mealTypeBn} অন করা হয়েছে`);
             loadMonthData();
         } catch (error) {
             toast.error(error.response?.data?.message || 'মিল পরিবর্তন করতে সমস্যা হয়েছে');
@@ -120,11 +122,39 @@ const MealCalendar = () => {
         );
     }
 
+    const currentRate = mealType === 'lunch'
+        ? (monthSettings?.lunchRate || 0)
+        : (monthSettings?.dinnerRate || 0);
+
     return (
         <div className="space-y-6">
             {/* Header */}
             <div className="flex items-center justify-between">
-                <h1 className="text-2xl font-bold text-gray-800">মিল ক্যালেন্ডার</h1>
+                <h1 className="text-2xl font-bold text-gray-800 dark:text-gray-100">মিল ক্যালেন্ডার</h1>
+            </div>
+
+            {/* Meal Type Tabs */}
+            <div className="flex gap-2 p-1 bg-gray-100 dark:bg-gray-800 rounded-lg w-fit">
+                <button
+                    onClick={() => setMealType('lunch')}
+                    className={`px-4 py-2 rounded-md font-medium transition-all ${
+                        mealType === 'lunch'
+                            ? 'bg-white dark:bg-gray-700 text-primary-600 dark:text-primary-400 shadow-sm'
+                            : 'text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200'
+                    }`}
+                >
+                    🍛 দুপুরের খাবার
+                </button>
+                <button
+                    onClick={() => setMealType('dinner')}
+                    className={`px-4 py-2 rounded-md font-medium transition-all ${
+                        mealType === 'dinner'
+                            ? 'bg-white dark:bg-gray-700 text-primary-600 dark:text-primary-400 shadow-sm'
+                            : 'text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200'
+                    }`}
+                >
+                    🍽️ রাতের খাবার
+                </button>
             </div>
 
             {/* Month Navigation */}
@@ -149,8 +179,11 @@ const MealCalendar = () => {
 
                 {/* Month Settings Info */}
                 {monthSettings && (
-                    <div className="mb-4 p-3 bg-gray-50 rounded-lg text-sm">
-                        <p>মিল রেট: <span className="font-medium">৳{monthSettings.lunchRate || 0}</span></p>
+                    <div className="mb-4 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg text-sm">
+                        <p className="text-gray-700 dark:text-gray-300">
+                            {mealType === 'lunch' ? 'দুপুরের খাবার' : 'রাতের খাবার'} রেট: {' '}
+                            <span className="font-medium text-primary-600 dark:text-primary-400">৳{currentRate}</span>
+                        </p>
                     </div>
                 )}
 

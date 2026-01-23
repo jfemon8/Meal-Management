@@ -21,7 +21,12 @@ const {
 // @access  Private (VIEW_OWN_MEALS or VIEW_ALL_MEALS)
 router.get('/status', protect, async (req, res) => {
     try {
-        const { startDate, endDate, userId } = req.query;
+        const { startDate, endDate, userId, mealType = 'lunch' } = req.query;
+
+        // Validate mealType
+        if (!['lunch', 'dinner'].includes(mealType)) {
+            return res.status(400).json({ message: 'মিল টাইপ অবৈধ। lunch বা dinner হতে হবে।' });
+        }
 
         // Users can only see their own meals, unless they have VIEW_ALL_MEALS permission
         let targetUserId = req.user._id;
@@ -53,7 +58,7 @@ router.get('/status', protect, async (req, res) => {
         const meals = await Meal.find({
             user: targetUserId,
             date: { $gte: start, $lte: end },
-            mealType: 'lunch'
+            mealType
         });
 
         // Build response with default and manual status
@@ -65,6 +70,7 @@ router.get('/status', protect, async (req, res) => {
 
             return {
                 date: dateStr,
+                mealType,
                 isDefaultOff,
                 isOn: manualMeal ? manualMeal.isOn : !isDefaultOff,
                 count: manualMeal ? manualMeal.count : (!isDefaultOff ? 1 : 0),
@@ -73,7 +79,7 @@ router.get('/status', protect, async (req, res) => {
             };
         });
 
-        res.json(mealStatus);
+        res.json({ mealType, meals: mealStatus });
     } catch (error) {
         console.error(error);
         res.status(500).json({ message: 'সার্ভার এরর' });
@@ -85,7 +91,8 @@ router.get('/status', protect, async (req, res) => {
 // @access  Private
 router.put('/toggle', protect, [
     body('date').notEmpty().withMessage('তারিখ আবশ্যক'),
-    body('isOn').isBoolean().withMessage('isOn বুলিয়ান হতে হবে')
+    body('isOn').isBoolean().withMessage('isOn বুলিয়ান হতে হবে'),
+    body('mealType').optional().isIn(['lunch', 'dinner']).withMessage('মিল টাইপ অবৈধ')
 ], async (req, res) => {
     try {
         const errors = validationResult(req);
@@ -93,7 +100,7 @@ router.put('/toggle', protect, [
             return res.status(400).json({ errors: errors.array() });
         }
 
-        const { date, isOn, userId, count } = req.body;
+        const { date, isOn, userId, count, mealType = 'lunch' } = req.body;
         const mealDate = new Date(date);
 
         // Check permissions
@@ -142,7 +149,7 @@ router.put('/toggle', protect, [
 
         // Update or create meal record
         const meal = await Meal.findOneAndUpdate(
-            { user: targetUserId, date: mealDate, mealType: 'lunch' },
+            { user: targetUserId, date: mealDate, mealType },
             {
                 isOn,
                 count: isOn ? (count || 1) : 0,
@@ -152,8 +159,9 @@ router.put('/toggle', protect, [
             { upsert: true, new: true }
         );
 
+        const mealTypeBn = mealType === 'lunch' ? 'দুপুরের খাবার' : 'রাতের খাবার';
         res.json({
-            message: isOn ? 'মিল অন করা হয়েছে' : 'মিল অফ করা হয়েছে',
+            message: isOn ? `${mealTypeBn} অন করা হয়েছে` : `${mealTypeBn} অফ করা হয়েছে`,
             meal
         });
     } catch (error) {
@@ -168,7 +176,8 @@ router.put('/toggle', protect, [
 router.put('/count', protect, isManager, [
     body('date').notEmpty().withMessage('তারিখ আবশ্যক'),
     body('userId').notEmpty().withMessage('ইউজার আইডি আবশ্যক'),
-    body('count').isInt({ min: 0 }).withMessage('সংখ্যা ০ বা তার বেশি হতে হবে')
+    body('count').isInt({ min: 0 }).withMessage('সংখ্যা ০ বা তার বেশি হতে হবে'),
+    body('mealType').optional().isIn(['lunch', 'dinner']).withMessage('মিল টাইপ অবৈধ')
 ], async (req, res) => {
     try {
         const errors = validationResult(req);
@@ -176,11 +185,11 @@ router.put('/count', protect, isManager, [
             return res.status(400).json({ errors: errors.array() });
         }
 
-        const { date, userId, count, notes } = req.body;
+        const { date, userId, count, notes, mealType = 'lunch' } = req.body;
         const mealDate = new Date(date);
 
         const meal = await Meal.findOneAndUpdate(
-            { user: userId, date: mealDate, mealType: 'lunch' },
+            { user: userId, date: mealDate, mealType },
             {
                 isOn: count > 0,
                 count,
@@ -206,7 +215,12 @@ router.put('/count', protect, isManager, [
 // @access  Private
 router.get('/summary', protect, async (req, res) => {
     try {
-        const { year, month, userId } = req.query;
+        const { year, month, userId, mealType = 'lunch' } = req.query;
+
+        // Validate mealType
+        if (!['lunch', 'dinner'].includes(mealType)) {
+            return res.status(400).json({ message: 'মিল টাইপ অবৈধ। lunch বা dinner হতে হবে।' });
+        }
 
         let targetUserId = req.user._id;
         if (userId && ['manager', 'admin', 'superadmin'].includes(req.user.role)) {
@@ -226,7 +240,8 @@ router.get('/summary', protect, async (req, res) => {
             monthSettings = {
                 startDate,
                 endDate,
-                lunchRate: 0
+                lunchRate: 0,
+                dinnerRate: 0
             };
         }
 
@@ -241,7 +256,7 @@ router.get('/summary', protect, async (req, res) => {
         const meals = await Meal.find({
             user: targetUserId,
             date: { $gte: monthSettings.startDate, $lte: monthSettings.endDate },
-            mealType: 'lunch'
+            mealType
         });
 
         // Calculate totals
@@ -265,14 +280,19 @@ router.get('/summary', protect, async (req, res) => {
             }
         });
 
-        const totalCharge = totalMeals * (monthSettings.lunchRate || 0);
+        // Use appropriate rate based on meal type
+        const rate = mealType === 'lunch'
+            ? (monthSettings.lunchRate || 0)
+            : (monthSettings.dinnerRate || 0);
+        const totalCharge = totalMeals * rate;
 
         res.json({
             year: parseInt(year),
             month: parseInt(month),
+            mealType,
             startDate: monthSettings.startDate,
             endDate: monthSettings.endDate,
-            lunchRate: monthSettings.lunchRate || 0,
+            rate,
             totalDays: dates.length,
             totalDaysOn,
             totalMeals,
@@ -290,8 +310,13 @@ router.get('/summary', protect, async (req, res) => {
 // @access  Private (Manager+)
 router.get('/daily', protect, isManager, async (req, res) => {
     try {
-        const { date } = req.query;
+        const { date, mealType = 'lunch' } = req.query;
         const mealDate = new Date(date);
+
+        // Validate mealType
+        if (!['lunch', 'dinner'].includes(mealType)) {
+            return res.status(400).json({ message: 'মিল টাইপ অবৈধ। lunch বা dinner হতে হবে।' });
+        }
 
         // Get all active users
         const User = require('../models/User');
@@ -308,7 +333,7 @@ router.get('/daily', protect, isManager, async (req, res) => {
         // Get meals for all users
         const meals = await Meal.find({
             date: mealDate,
-            mealType: 'lunch'
+            mealType
         }).populate('user', 'name email');
 
         // Build response
@@ -329,6 +354,7 @@ router.get('/daily', protect, isManager, async (req, res) => {
 
         res.json({
             date: formatDate(mealDate),
+            mealType,
             isDefaultOff,
             isHoliday: holidays.length > 0,
             holidayName: holidays.length > 0 ? holidays[0].nameBn : null,

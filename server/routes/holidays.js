@@ -3,6 +3,7 @@ const router = express.Router();
 const { body, validationResult } = require('express-validator');
 const Holiday = require('../models/Holiday');
 const { protect, isManager, isAdmin } = require('../middleware/auth');
+const { syncHolidays, fetchBangladeshHolidays, checkApiAvailability } = require('../services/holidaySync');
 
 // Bangladesh public holidays 2026 (sample data)
 const defaultHolidays2026 = [
@@ -180,6 +181,103 @@ router.post('/seed', protect, isAdmin, async (req, res) => {
     } catch (error) {
         console.error(error);
         res.status(500).json({ message: 'সার্ভার এরর' });
+    }
+});
+
+// @route   POST /api/holidays/sync
+// @desc    Sync holidays from external API (Admin+ only)
+// @access  Private (Admin+)
+router.post('/sync', protect, isAdmin, async (req, res) => {
+    try {
+        const { year } = req.body;
+        const targetYear = year || new Date().getFullYear();
+
+        // Check API availability first
+        const isAvailable = await checkApiAvailability();
+        if (!isAvailable) {
+            return res.status(503).json({
+                message: 'Holiday API বর্তমানে অ্যাক্সেসযোগ্য নয়। পরে আবার চেষ্টা করুন।'
+            });
+        }
+
+        const result = await syncHolidays(targetYear, req.user._id);
+
+        res.json({
+            message: `${targetYear} সালের ছুটি সিঙ্ক সম্পন্ন`,
+            year: targetYear,
+            added: result.added,
+            updated: result.updated,
+            skipped: result.skipped,
+            errors: result.errors
+        });
+    } catch (error) {
+        console.error('Sync error:', error);
+        res.status(500).json({
+            message: error.message || 'সিঙ্ক করতে সমস্যা হয়েছে'
+        });
+    }
+});
+
+// @route   GET /api/holidays/preview/:year
+// @desc    Preview holidays from API without saving (Admin+ only)
+// @access  Private (Admin+)
+router.get('/preview/:year', protect, isAdmin, async (req, res) => {
+    try {
+        const year = parseInt(req.params.year);
+
+        if (!year || year < 2020 || year > 2030) {
+            return res.status(400).json({
+                message: 'বছর ২০২০ থেকে ২০৩০ এর মধ্যে হতে হবে'
+            });
+        }
+
+        // Check API availability
+        const isAvailable = await checkApiAvailability();
+        if (!isAvailable) {
+            return res.status(503).json({
+                message: 'Holiday API বর্তমানে অ্যাক্সেসযোগ্য নয়'
+            });
+        }
+
+        const holidays = await fetchBangladeshHolidays(year);
+
+        res.json({
+            year,
+            count: holidays.length,
+            holidays: holidays.map(h => ({
+                date: h.date,
+                name: h.name,
+                localName: h.localName,
+                types: h.types,
+                global: h.global,
+                fixed: h.fixed
+            }))
+        });
+    } catch (error) {
+        console.error('Preview error:', error);
+        res.status(500).json({
+            message: error.message || 'প্রিভিউ করতে সমস্যা হয়েছে'
+        });
+    }
+});
+
+// @route   GET /api/holidays/api-status
+// @desc    Check external API availability
+// @access  Private (Admin+)
+router.get('/api-status', protect, isAdmin, async (req, res) => {
+    try {
+        const isAvailable = await checkApiAvailability();
+        res.json({
+            available: isAvailable,
+            message: isAvailable
+                ? 'Holiday API অ্যাক্সেসযোগ্য'
+                : 'Holiday API অ্যাক্সেসযোগ্য নয়'
+        });
+    } catch (error) {
+        res.json({
+            available: false,
+            message: 'API স্ট্যাটাস চেক করতে সমস্যা হয়েছে'
+        });
     }
 });
 

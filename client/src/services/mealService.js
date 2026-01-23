@@ -2,38 +2,38 @@ import api from './api';
 
 export const mealService = {
     // Get meal status for date range
-    getMealStatus: async (startDate, endDate, userId = null) => {
-        const params = { startDate, endDate };
+    getMealStatus: async (startDate, endDate, userId = null, mealType = 'lunch') => {
+        const params = { startDate, endDate, mealType };
         if (userId) params.userId = userId;
         const response = await api.get('/meals/status', { params });
         return response.data;
     },
 
     // Toggle meal on/off
-    toggleMeal: async (date, isOn, userId = null, count = 1) => {
-        const data = { date, isOn, count };
+    toggleMeal: async (date, isOn, userId = null, count = 1, mealType = 'lunch') => {
+        const data = { date, isOn, count, mealType };
         if (userId) data.userId = userId;
         const response = await api.put('/meals/toggle', data);
         return response.data;
     },
 
     // Update meal count (Manager+)
-    updateMealCount: async (date, userId, count, notes = '') => {
-        const response = await api.put('/meals/count', { date, userId, count, notes });
+    updateMealCount: async (date, userId, count, notes = '', mealType = 'lunch') => {
+        const response = await api.put('/meals/count', { date, userId, count, notes, mealType });
         return response.data;
     },
 
     // Get meal summary for a month
-    getMealSummary: async (year, month, userId = null) => {
-        const params = { year, month };
+    getMealSummary: async (year, month, userId = null, mealType = 'lunch') => {
+        const params = { year, month, mealType };
         if (userId) params.userId = userId;
         const response = await api.get('/meals/summary', { params });
         return response.data;
     },
 
     // Get daily meals for all users (Manager+)
-    getDailyMeals: async (date) => {
-        const response = await api.get('/meals/daily', { params: { date } });
+    getDailyMeals: async (date, mealType = 'lunch') => {
+        const response = await api.get('/meals/daily', { params: { date, mealType } });
         return response.data;
     }
 };
@@ -182,6 +182,18 @@ export const holidayService = {
     seedHolidays: async (year) => {
         const response = await api.post('/holidays/seed', { year });
         return response.data;
+    },
+
+    // Sync holidays from API (Admin+)
+    syncHolidays: async (year) => {
+        const response = await api.post('/holidays/sync', { year });
+        return response.data;
+    },
+
+    // Preview holidays from API (Admin+)
+    previewHolidays: async (year) => {
+        const response = await api.get(`/holidays/preview/${year}`);
+        return response.data;
     }
 };
 
@@ -221,8 +233,56 @@ export const reportService = {
     },
 
     // Get daily report (Manager+)
-    getDailyReport: async (date) => {
-        const response = await api.get('/reports/daily', { params: { date } });
+    getDailyReport: async (date, mealType = 'lunch') => {
+        const response = await api.get('/reports/daily', { params: { date, mealType } });
+        return response.data;
+    }
+};
+
+export const ruleOverrideService = {
+    // Get all rule overrides (Manager+)
+    getOverrides: async (params = {}) => {
+        const response = await api.get('/rule-overrides', { params });
+        return response.data;
+    },
+
+    // Check applicable overrides for a date/user
+    checkOverrides: async (date, userId = null, mealType = 'lunch') => {
+        const params = { date, mealType };
+        if (userId) params.userId = userId;
+        const response = await api.get('/rule-overrides/check', { params });
+        return response.data;
+    },
+
+    // Get effective status with priority resolution
+    getEffectiveStatus: async (date, userId = null, mealType = 'lunch') => {
+        const params = { date, mealType };
+        if (userId) params.userId = userId;
+        const response = await api.get('/rule-overrides/effective-status', { params });
+        return response.data;
+    },
+
+    // Create new override (Manager+)
+    createOverride: async (data) => {
+        const response = await api.post('/rule-overrides', data);
+        return response.data;
+    },
+
+    // Update override
+    updateOverride: async (id, data) => {
+        const response = await api.put(`/rule-overrides/${id}`, data);
+        return response.data;
+    },
+
+    // Delete override
+    deleteOverride: async (id) => {
+        const response = await api.delete(`/rule-overrides/${id}`);
+        return response.data;
+    },
+
+    // Toggle override active status
+    toggleOverride: async (id) => {
+        const response = await api.post(`/rule-overrides/${id}/toggle`);
         return response.data;
     }
 };

@@ -55,11 +55,18 @@ router.get('/monthly', protect, async (req, res) => {
         });
         const holidayDates = holidays.map(h => h.date);
 
-        // Get meals
-        const meals = await Meal.find({
+        // Get lunch meals
+        const lunchMeals = await Meal.find({
             user: targetUserId,
             date: { $gte: monthSettings.startDate, $lte: monthSettings.endDate },
             mealType: 'lunch'
+        });
+
+        // Get dinner meals
+        const dinnerMeals = await Meal.find({
+            user: targetUserId,
+            date: { $gte: monthSettings.startDate, $lte: monthSettings.endDate },
+            mealType: 'dinner'
         });
 
         // Get breakfast costs
@@ -79,9 +86,9 @@ router.get('/monthly', protect, async (req, res) => {
         let lunchMealsCount = 0;
         let lunchDaysOn = 0;
 
-        const dailyMeals = dates.map(date => {
+        const dailyLunchMeals = dates.map(date => {
             const dateStr = formatDate(date);
-            const manualMeal = meals.find(m => formatDate(m.date) === dateStr);
+            const manualMeal = lunchMeals.find(m => formatDate(m.date) === dateStr);
             const isDefaultOff = isDefaultMealOff(date, holidayDates);
             const holiday = holidays.find(h => formatDate(h.date) === dateStr);
 
@@ -97,6 +104,41 @@ router.get('/monthly', protect, async (req, res) => {
             if (isOn) {
                 lunchMealsCount += count;
                 lunchDaysOn++;
+            }
+
+            return {
+                date: dateStr,
+                dayName: new Date(date).toLocaleDateString('bn-BD', { weekday: 'long' }),
+                isOn,
+                count,
+                isDefaultOff,
+                isHoliday: !!holiday,
+                holidayName: holiday ? holiday.nameBn : null
+            };
+        });
+
+        // Calculate dinner summary
+        let dinnerMealsCount = 0;
+        let dinnerDaysOn = 0;
+
+        const dailyDinnerMeals = dates.map(date => {
+            const dateStr = formatDate(date);
+            const manualMeal = dinnerMeals.find(m => formatDate(m.date) === dateStr);
+            const isDefaultOff = isDefaultMealOff(date, holidayDates);
+            const holiday = holidays.find(h => formatDate(h.date) === dateStr);
+
+            let isOn, count;
+            if (manualMeal) {
+                isOn = manualMeal.isOn;
+                count = manualMeal.count;
+            } else {
+                isOn = !isDefaultOff;
+                count = isOn ? 1 : 0;
+            }
+
+            if (isOn) {
+                dinnerMealsCount += count;
+                dinnerDaysOn++;
             }
 
             return {
@@ -130,6 +172,7 @@ router.get('/monthly', protect, async (req, res) => {
 
         // Calculate totals
         const lunchTotalCharge = lunchMealsCount * (monthSettings.lunchRate || 0);
+        const dinnerTotalCharge = dinnerMealsCount * (monthSettings.dinnerRate || 0);
 
         // Balance summary
         const deposits = transactions.filter(t => t.type === 'deposit');
@@ -166,7 +209,14 @@ router.get('/monthly', protect, async (req, res) => {
                 daysOn: lunchDaysOn,
                 totalMeals: lunchMealsCount,
                 totalCharge: lunchTotalCharge,
-                dailyDetails: dailyMeals
+                dailyDetails: dailyLunchMeals
+            },
+            dinner: {
+                rate: monthSettings.dinnerRate || 0,
+                daysOn: dinnerDaysOn,
+                totalMeals: dinnerMealsCount,
+                totalCharge: dinnerTotalCharge,
+                dailyDetails: dailyDinnerMeals
             },
             breakfast: {
                 totalCost: breakfastTotalCost,
@@ -206,7 +256,8 @@ router.get('/all-users', protect, isManager, async (req, res) => {
             monthSettings = {
                 startDate,
                 endDate,
-                lunchRate: 0
+                lunchRate: 0,
+                dinnerRate: 0
             };
         }
 
@@ -220,32 +271,54 @@ router.get('/all-users', protect, isManager, async (req, res) => {
         // Get all active users
         const users = await User.find({ isActive: true }).select('-password');
 
-        // Get all meals for the period
-        const allMeals = await Meal.find({
+        // Get all lunch meals for the period
+        const allLunchMeals = await Meal.find({
             date: { $gte: monthSettings.startDate, $lte: monthSettings.endDate },
             mealType: 'lunch'
+        });
+
+        // Get all dinner meals for the period
+        const allDinnerMeals = await Meal.find({
+            date: { $gte: monthSettings.startDate, $lte: monthSettings.endDate },
+            mealType: 'dinner'
         });
 
         const dates = getDatesBetween(monthSettings.startDate, monthSettings.endDate);
 
         // Calculate for each user
         const userReports = users.map(user => {
-            const userMeals = allMeals.filter(m => m.user.toString() === user._id.toString());
-            let totalMeals = 0;
+            const userLunchMeals = allLunchMeals.filter(m => m.user.toString() === user._id.toString());
+            const userDinnerMeals = allDinnerMeals.filter(m => m.user.toString() === user._id.toString());
+            let totalLunchMeals = 0;
+            let totalDinnerMeals = 0;
 
             dates.forEach(date => {
                 const dateStr = formatDate(date);
-                const manualMeal = userMeals.find(m => formatDate(m.date) === dateStr);
                 const isDefaultOff = isDefaultMealOff(date, holidayDates);
 
-                if (manualMeal) {
-                    if (manualMeal.isOn) {
-                        totalMeals += manualMeal.count;
+                // Lunch calculation
+                const lunchMeal = userLunchMeals.find(m => formatDate(m.date) === dateStr);
+                if (lunchMeal) {
+                    if (lunchMeal.isOn) {
+                        totalLunchMeals += lunchMeal.count;
                     }
                 } else if (!isDefaultOff) {
-                    totalMeals++;
+                    totalLunchMeals++;
+                }
+
+                // Dinner calculation
+                const dinnerMeal = userDinnerMeals.find(m => formatDate(m.date) === dateStr);
+                if (dinnerMeal) {
+                    if (dinnerMeal.isOn) {
+                        totalDinnerMeals += dinnerMeal.count;
+                    }
+                } else if (!isDefaultOff) {
+                    totalDinnerMeals++;
                 }
             });
+
+            const lunchCharge = totalLunchMeals * (monthSettings.lunchRate || 0);
+            const dinnerCharge = totalDinnerMeals * (monthSettings.dinnerRate || 0);
 
             return {
                 user: {
@@ -253,15 +326,25 @@ router.get('/all-users', protect, isManager, async (req, res) => {
                     name: user.name,
                     email: user.email
                 },
-                totalMeals,
-                totalCharge: totalMeals * (monthSettings.lunchRate || 0),
-                balance: user.balances.lunch
+                lunch: {
+                    totalMeals: totalLunchMeals,
+                    totalCharge: lunchCharge,
+                    balance: user.balances.lunch
+                },
+                dinner: {
+                    totalMeals: totalDinnerMeals,
+                    totalCharge: dinnerCharge,
+                    balance: user.balances.dinner
+                },
+                totalCharge: lunchCharge + dinnerCharge
             };
         });
 
         // Calculate grand totals
-        const grandTotalMeals = userReports.reduce((sum, r) => sum + r.totalMeals, 0);
-        const grandTotalCharge = userReports.reduce((sum, r) => sum + r.totalCharge, 0);
+        const grandTotalLunchMeals = userReports.reduce((sum, r) => sum + r.lunch.totalMeals, 0);
+        const grandTotalDinnerMeals = userReports.reduce((sum, r) => sum + r.dinner.totalMeals, 0);
+        const grandTotalLunchCharge = userReports.reduce((sum, r) => sum + r.lunch.totalCharge, 0);
+        const grandTotalDinnerCharge = userReports.reduce((sum, r) => sum + r.dinner.totalCharge, 0);
 
         res.json({
             period: {
@@ -269,13 +352,21 @@ router.get('/all-users', protect, isManager, async (req, res) => {
                 month: parseInt(month),
                 startDate: monthSettings.startDate,
                 endDate: monthSettings.endDate,
-                lunchRate: monthSettings.lunchRate || 0
+                lunchRate: monthSettings.lunchRate || 0,
+                dinnerRate: monthSettings.dinnerRate || 0
             },
             users: userReports,
             summary: {
                 totalUsers: users.length,
-                grandTotalMeals,
-                grandTotalCharge
+                lunch: {
+                    grandTotalMeals: grandTotalLunchMeals,
+                    grandTotalCharge: grandTotalLunchCharge
+                },
+                dinner: {
+                    grandTotalMeals: grandTotalDinnerMeals,
+                    grandTotalCharge: grandTotalDinnerCharge
+                },
+                grandTotalCharge: grandTotalLunchCharge + grandTotalDinnerCharge
             }
         });
     } catch (error) {
@@ -289,11 +380,16 @@ router.get('/all-users', protect, isManager, async (req, res) => {
 // @access  Private (Manager+)
 router.get('/daily', protect, isManager, async (req, res) => {
     try {
-        const { date } = req.query;
+        const { date, mealType = 'lunch' } = req.query;
         const reportDate = new Date(date);
 
+        // Validate mealType
+        if (!['lunch', 'dinner'].includes(mealType)) {
+            return res.status(400).json({ message: 'মিল টাইপ অবৈধ। lunch বা dinner হতে হবে।' });
+        }
+
         // Get all active users
-        const users = await User.find({ isActive: true }).select('name email');
+        const users = await User.find({ isActive: true }).select('name email balances');
 
         // Get holidays
         const holidays = await Holiday.find({
@@ -306,12 +402,13 @@ router.get('/daily', protect, isManager, async (req, res) => {
         // Get meals for the date
         const meals = await Meal.find({
             date: reportDate,
-            mealType: 'lunch'
+            mealType
         });
 
         // Build report
         const userMeals = users.map(user => {
             const meal = meals.find(m => m.user.toString() === user._id.toString());
+            const balance = mealType === 'lunch' ? user.balances.lunch : user.balances.dinner;
 
             return {
                 user: {
@@ -321,7 +418,8 @@ router.get('/daily', protect, isManager, async (req, res) => {
                 },
                 isOn: meal ? meal.isOn : !isDefaultOff,
                 count: meal ? meal.count : (!isDefaultOff ? 1 : 0),
-                isManuallySet: !!meal
+                isManuallySet: !!meal,
+                balance
             };
         });
 
@@ -330,6 +428,7 @@ router.get('/daily', protect, isManager, async (req, res) => {
 
         res.json({
             date: formatDate(reportDate),
+            mealType,
             dayName: reportDate.toLocaleDateString('bn-BD', { weekday: 'long' }),
             isDefaultOff,
             isHoliday: holidays.length > 0,
