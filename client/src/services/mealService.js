@@ -294,6 +294,63 @@ export const reportService = {
     getDailyReport: async (date, mealType = 'lunch') => {
         const response = await api.get('/reports/daily', { params: { date, mealType } });
         return response.data;
+    },
+
+    // Get wallet summary
+    getWalletSummary: async (userId = null) => {
+        const params = {};
+        if (userId) params.userId = userId;
+        const response = await api.get('/reports/wallet-summary', { params });
+        return response.data;
+    },
+
+    // Get top consumers (Manager+)
+    getTopConsumers: async (year, month, mealType = 'all', limit = 10) => {
+        const response = await api.get('/reports/top-consumers', {
+            params: { year, month, mealType, limit }
+        });
+        return response.data;
+    },
+
+    // Get defaulters list (Manager+)
+    getDefaulters: async (year, month, threshold = 0, balanceType = 'all') => {
+        const response = await api.get('/reports/defaulters', {
+            params: { year, month, threshold, balanceType }
+        });
+        return response.data;
+    },
+
+    // Export as CSV (Manager+)
+    exportCSV: async (year, month, reportType = 'all-users') => {
+        const response = await api.get('/reports/export/csv', {
+            params: { year, month, reportType },
+            responseType: 'blob'
+        });
+        // Create download link
+        const url = window.URL.createObjectURL(new Blob([response.data]));
+        const link = document.createElement('a');
+        link.href = url;
+        link.setAttribute('download', `report-${year}-${month}-${reportType}.csv`);
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        window.URL.revokeObjectURL(url);
+    },
+
+    // Export as JSON for PDF (Manager+)
+    getExportData: async (year, month, reportType = 'all-users') => {
+        const response = await api.get('/reports/export/json', {
+            params: { year, month, reportType }
+        });
+        return response.data;
+    },
+
+    // Get user monthly report (printable format)
+    getUserMonthlyReport: async (userId, year, month) => {
+        const response = await api.get(`/reports/user/${userId}/monthly`, {
+            params: { year, month }
+        });
+        return response.data;
     }
 };
 
