@@ -262,4 +262,12 @@ userSchema.methods.getAllPermissions = function () {
     return [...new Set([...rolePerms, ...customPerms])];
 };
 
+// Indexes for performance
+userSchema.index({ isActive: 1 });
+userSchema.index({ role: 1, isActive: 1 });
+userSchema.index({ isDeleted: 1, deletedAt: -1 });
+userSchema.index({ 'balances.breakfast.amount': 1 });
+userSchema.index({ 'balances.lunch.amount': 1 });
+userSchema.index({ 'balances.dinner.amount': 1 });
+
 module.exports = mongoose.model('User', userSchema);

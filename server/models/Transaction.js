@@ -100,8 +100,13 @@ const transactionSchema = new mongoose.Schema({
     timestamps: true
 });
 
-// Index for efficient queries
+// Indexes for efficient queries
 transactionSchema.index({ user: 1, createdAt: -1 });
 transactionSchema.index({ user: 1, balanceType: 1, createdAt: -1 });
+transactionSchema.index({ type: 1, createdAt: -1 });
+transactionSchema.index({ isCorrected: 1, correctedAt: -1 });
+transactionSchema.index({ isReversed: 1, createdAt: -1 });
+transactionSchema.index({ performedBy: 1, createdAt: -1 });
+transactionSchema.index({ reference: 1, referenceModel: 1 });
 
 module.exports = mongoose.model('Transaction', transactionSchema);

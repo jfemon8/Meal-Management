@@ -641,3 +641,67 @@ export const notificationService = {
         return response.data;
     }
 };
+
+export const auditLogService = {
+    // Get audit logs (Admin+)
+    getLogs: async (params = {}) => {
+        const response = await api.get('/audit-logs', { params });
+        return response.data;
+    },
+
+    // Get audit log categories
+    getCategories: async () => {
+        const response = await api.get('/audit-logs/categories');
+        return response.data;
+    },
+
+    // Get audit log actions
+    getActions: async (category = null) => {
+        const params = {};
+        if (category) params.category = category;
+        const response = await api.get('/audit-logs/actions', { params });
+        return response.data;
+    },
+
+    // Get activity summary for dashboard
+    getSummary: async (days = 7) => {
+        const response = await api.get('/audit-logs/summary', { params: { days } });
+        return response.data;
+    },
+
+    // Get critical actions (SuperAdmin)
+    getCritical: async (limit = 20) => {
+        const response = await api.get('/audit-logs/critical', { params: { limit } });
+        return response.data;
+    },
+
+    // Search audit logs
+    search: async (q, params = {}) => {
+        const response = await api.get('/audit-logs/search', { params: { q, ...params } });
+        return response.data;
+    },
+
+    // Get user's audit logs
+    getUserLogs: async (userId, params = {}) => {
+        const response = await api.get(`/audit-logs/user/${userId}`, { params });
+        return response.data;
+    },
+
+    // Get single audit log
+    getLog: async (id) => {
+        const response = await api.get(`/audit-logs/${id}`);
+        return response.data;
+    },
+
+    // Get my audit history
+    getMyHistory: async (params = {}) => {
+        const response = await api.get('/audit-logs/my/history', { params });
+        return response.data;
+    },
+
+    // Undo action (SuperAdmin)
+    undoAction: async (id) => {
+        const response = await api.post(`/audit-logs/${id}/undo`);
+        return response.data;
+    }
+};

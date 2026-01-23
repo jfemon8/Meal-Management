@@ -72,8 +72,11 @@ const monthSettingsSchema = new mongoose.Schema({
     timestamps: true
 });
 
-// Compound index for year and month
+// Indexes for efficient queries
 monthSettingsSchema.index({ year: 1, month: 1 }, { unique: true });
+monthSettingsSchema.index({ isFinalized: 1 });
+monthSettingsSchema.index({ startDate: 1, endDate: 1 });
+monthSettingsSchema.index({ isCarriedForward: 1, carriedForwardAt: -1 });
 
 // Validate that date range doesn't exceed 31 days
 monthSettingsSchema.pre('save', function (next) {

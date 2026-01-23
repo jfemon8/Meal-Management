@@ -61,7 +61,11 @@ const holidaySchema = new mongoose.Schema({
     timestamps: true
 });
 
-// Index for efficient date queries
+// Indexes for efficient queries
 holidaySchema.index({ date: 1 });
+holidaySchema.index({ isActive: 1, date: 1 });
+holidaySchema.index({ isRecurring: 1, recurringMonth: 1, recurringDay: 1 });
+holidaySchema.index({ type: 1, isActive: 1 });
+holidaySchema.index({ source: 1, lastSyncedAt: -1 });
 
 module.exports = mongoose.model('Holiday', holidaySchema);

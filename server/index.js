@@ -43,6 +43,7 @@ app.use('/api/global-settings', require('./routes/globalSettings'));
 app.use('/api/super-admin', require('./routes/superAdmin'));
 app.use('/api/feature-flags', require('./routes/featureFlags'));
 app.use('/api/notifications', require('./routes/notifications'));
+app.use('/api/audit-logs', require('./routes/auditLogs'));
 
 // Error handling middleware
 app.use((err, req, res, next) => {

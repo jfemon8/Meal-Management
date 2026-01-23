@@ -53,7 +53,10 @@ const breakfastSchema = new mongoose.Schema({
     timestamps: true
 });
 
-// Index for efficient date queries
+// Indexes for efficient queries
 breakfastSchema.index({ date: 1 }, { unique: true });
+breakfastSchema.index({ 'participants.user': 1, date: -1 });
+breakfastSchema.index({ isFinalized: 1, date: -1 });
+breakfastSchema.index({ submittedBy: 1, createdAt: -1 });
 
 module.exports = mongoose.model('Breakfast', breakfastSchema);
