@@ -2,13 +2,15 @@ import React, { useState, useEffect, useRef } from 'react';
 import { reportService } from '../../services/mealService';
 import { format, subMonths, addMonths } from 'date-fns';
 import { bn } from 'date-fns/locale';
-import { FiPrinter, FiChevronLeft, FiChevronRight, FiDownload } from 'react-icons/fi';
+import { FiPrinter, FiChevronLeft, FiChevronRight, FiDownload, FiLock } from 'react-icons/fi';
 import { useReactToPrint } from 'react-to-print';
+import html2pdf from 'html2pdf.js';
 
 const MonthlyReport = () => {
     const [currentMonth, setCurrentMonth] = useState(new Date());
     const [report, setReport] = useState(null);
     const [loading, setLoading] = useState(true);
+    const [downloading, setDownloading] = useState(false);
     const printRef = useRef();
 
     useEffect(() => {
@@ -34,6 +36,26 @@ const MonthlyReport = () => {
         documentTitle: `মিল-রিপোর্ট-${format(currentMonth, 'yyyy-MM')}`,
     });
 
+    const handleDownloadPDF = async () => {
+        if (!printRef.current) return;
+        setDownloading(true);
+        try {
+            const element = printRef.current;
+            const opt = {
+                margin: 10,
+                filename: `মিল-রিপোর্ট-${format(currentMonth, 'yyyy-MM')}.pdf`,
+                image: { type: 'jpeg', quality: 0.98 },
+                html2canvas: { scale: 2, useCORS: true },
+                jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+            };
+            await html2pdf().set(opt).from(element).save();
+        } catch (error) {
+            console.error('PDF download error:', error);
+        } finally {
+            setDownloading(false);
+        }
+    };
+
     const prevMonth = () => setCurrentMonth(subMonths(currentMonth, 1));
     const nextMonth = () => setCurrentMonth(addMonths(currentMonth, 1));
 
@@ -49,24 +71,42 @@ const MonthlyReport = () => {
         <div className="space-y-6">
             {/* Header */}
             <div className="flex items-center justify-between no-print">
-                <h1 className="text-2xl font-bold text-gray-800">মাসিক রিপোর্ট</h1>
-                <button onClick={handlePrint} className="btn btn-primary flex items-center gap-2">
-                    <FiPrinter />
-                    প্রিন্ট করুন
-                </button>
+                <h1 className="text-2xl font-bold text-gray-800 dark:text-gray-100">মাসিক রিপোর্ট</h1>
+                <div className="flex items-center gap-2">
+                    <button
+                        onClick={handleDownloadPDF}
+                        disabled={downloading || !report}
+                        className="btn btn-outline flex items-center gap-2"
+                    >
+                        <FiDownload />
+                        {downloading ? 'ডাউনলোড হচ্ছে...' : 'PDF'}
+                    </button>
+                    <button onClick={handlePrint} className="btn btn-primary flex items-center gap-2">
+                        <FiPrinter />
+                        প্রিন্ট
+                    </button>
+                </div>
             </div>
 
             {/* Month Navigation */}
             <div className="card no-print">
                 <div className="flex items-center justify-center gap-4">
-                    <button onClick={prevMonth} className="p-2 hover:bg-gray-100 rounded-lg">
-                        <FiChevronLeft className="w-6 h-6" />
+                    <button onClick={prevMonth} className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg">
+                        <FiChevronLeft className="w-6 h-6 dark:text-gray-300" />
                     </button>
-                    <h2 className="text-xl font-semibold">
-                        {format(currentMonth, 'MMMM yyyy', { locale: bn })}
-                    </h2>
-                    <button onClick={nextMonth} className="p-2 hover:bg-gray-100 rounded-lg">
-                        <FiChevronRight className="w-6 h-6" />
+                    <div className="flex items-center gap-2">
+                        <h2 className="text-xl font-semibold dark:text-gray-100">
+                            {format(currentMonth, 'MMMM yyyy', { locale: bn })}
+                        </h2>
+                        {report?.period?.isFinalized && (
+                            <span className="inline-flex items-center gap-1 px-2 py-1 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 text-xs rounded-full">
+                                <FiLock className="w-3 h-3" />
+                                ফাইনালাইজড
+                            </span>
+                        )}
+                    </div>
+                    <button onClick={nextMonth} className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg">
+                        <FiChevronRight className="w-6 h-6 dark:text-gray-300" />
                     </button>
                 </div>
             </div>
