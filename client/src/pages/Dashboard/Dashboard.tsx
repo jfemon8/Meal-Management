@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useMealSummary } from '../../hooks/queries/useMeals';
 import { useCurrentMonthSettings } from '../../hooks/queries/useMonthSettings';
-import { FiCalendar, FiTrendingUp, FiUsers, FiAlertCircle } from 'react-icons/fi';
+import { FiCalendar, FiTrendingUp, FiUsers, FiAlertCircle, FiCoffee, FiDollarSign, FiClock, FiList } from 'react-icons/fi';
 import { format } from 'date-fns';
 import { bn } from 'date-fns/locale';
 import BDTIcon from '../../components/Icons/BDTIcon';
@@ -20,6 +20,41 @@ interface UpcomingOffDay {
     isAlsoHoliday?: boolean;
     holidayName?: string;
     holidayType?: string;
+}
+
+interface ManagerDashboardStats {
+    todayMeals: {
+        isHoliday: boolean;
+        holidayName: string | null;
+        isDefaultOff: boolean;
+        lunch: { usersOn: number; usersOff: number; totalMeals: number };
+        dinner: { usersOn: number; usersOff: number; totalMeals: number };
+    };
+    monthlyMeals: {
+        grandTotalLunch: number;
+        grandTotalDinner: number;
+        grandTotal: number;
+        lunchRate: number;
+        dinnerRate: number;
+        estimatedLunchCost: number;
+        estimatedDinnerCost: number;
+        userWise: Array<{ _id: string; name: string; lunchCount: number; dinnerCount: number; totalCount: number }>;
+    };
+    breakfastPending: {
+        notFinalized: { count: number; totalCost: number; dates: Array<{ date: string; totalCost: number; description: string }> };
+        pendingDeductions: { count: number; amount: number };
+    };
+    deposits: {
+        breakfast: { amount: number; count: number };
+        lunch: { amount: number; count: number };
+        dinner: { amount: number; count: number };
+        total: { amount: number; count: number };
+    };
+    summary: {
+        totalUsers: number;
+        usersWithLowBalance: number;
+        lowBalanceThreshold: number;
+    };
 }
 
 interface StatCardProps {
@@ -46,9 +81,11 @@ const StatCard: React.FC<StatCardProps> = ({ icon: Icon, title, value, subtitle,
 );
 
 const Dashboard: React.FC = () => {
-    const { user } = useAuth();
+    const { user, isManager } = useAuth();
     const [upcomingOffDays, setUpcomingOffDays] = useState<UpcomingOffDay[]>([]);
     const [offDaysLoading, setOffDaysLoading] = useState(true);
+    const [managerStats, setManagerStats] = useState<ManagerDashboardStats | null>(null);
+    const [managerStatsLoading, setManagerStatsLoading] = useState(true);
 
     const today = new Date();
     const year = today.getFullYear();
@@ -73,6 +110,25 @@ const Dashboard: React.FC = () => {
         };
         fetchUpcomingOffDays();
     }, []);
+
+    // Fetch manager dashboard stats (only for managers)
+    useEffect(() => {
+        const fetchManagerStats = async () => {
+            if (!isManager) {
+                setManagerStatsLoading(false);
+                return;
+            }
+            try {
+                const response = await api.get('/reports/manager-dashboard');
+                setManagerStats(response.data);
+            } catch (error) {
+                console.error('Failed to fetch manager stats:', error);
+            } finally {
+                setManagerStatsLoading(false);
+            }
+        };
+        fetchManagerStats();
+    }, [isManager]);
 
     return (
         <div className="space-y-6">
@@ -118,6 +174,175 @@ const Dashboard: React.FC = () => {
                     color="text-purple-600"
                 />
             </div>
+
+            {/* Manager Dashboard Widgets */}
+            <RequirePermission permission={PERMISSIONS.VIEW_DAILY_MEALS}>
+                {managerStatsLoading ? (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                        {[1, 2, 3, 4].map((i) => (
+                            <div key={i} className="card">
+                                <Skeleton className="h-6 w-32 mb-2" />
+                                <Skeleton className="h-10 w-20" />
+                            </div>
+                        ))}
+                    </div>
+                ) : managerStats ? (
+                    <>
+                        {/* Today's Meal Count */}
+                        <div className="card">
+                            <h2 className="text-lg font-semibold mb-4 flex items-center gap-2 text-gray-800 dark:text-gray-100">
+                                <FiCalendar className="text-green-500" />
+                                আজকের মিল স্ট্যাটাস
+                                {managerStats.todayMeals.isHoliday && (
+                                    <span className="text-xs px-2 py-1 bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400 rounded-full ml-2">
+                                        {managerStats.todayMeals.holidayName || 'ছুটি'}
+                                    </span>
+                                )}
+                                {managerStats.todayMeals.isDefaultOff && !managerStats.todayMeals.isHoliday && (
+                                    <span className="text-xs px-2 py-1 bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300 rounded-full ml-2">
+                                        অটো অফ
+                                    </span>
+                                )}
+                            </h2>
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                <div className="bg-green-50 dark:bg-green-900/20 rounded-lg p-4 text-center">
+                                    <p className="text-3xl font-bold text-green-600 dark:text-green-400">
+                                        {managerStats.todayMeals.lunch.totalMeals}
+                                    </p>
+                                    <p className="text-sm text-gray-600 dark:text-gray-400">দুপুরের মিল</p>
+                                    <p className="text-xs text-gray-500 dark:text-gray-500">
+                                        {managerStats.todayMeals.lunch.usersOn}/{managerStats.summary.totalUsers} জন অন
+                                    </p>
+                                </div>
+                                <div className="bg-purple-50 dark:bg-purple-900/20 rounded-lg p-4 text-center">
+                                    <p className="text-3xl font-bold text-purple-600 dark:text-purple-400">
+                                        {managerStats.todayMeals.dinner.totalMeals}
+                                    </p>
+                                    <p className="text-sm text-gray-600 dark:text-gray-400">রাতের মিল</p>
+                                    <p className="text-xs text-gray-500 dark:text-gray-500">
+                                        {managerStats.todayMeals.dinner.usersOn}/{managerStats.summary.totalUsers} জন অন
+                                    </p>
+                                </div>
+                                <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4 text-center">
+                                    <p className="text-3xl font-bold text-blue-600 dark:text-blue-400">
+                                        {managerStats.summary.totalUsers}
+                                    </p>
+                                    <p className="text-sm text-gray-600 dark:text-gray-400">মোট ইউজার</p>
+                                </div>
+                                <div className="bg-red-50 dark:bg-red-900/20 rounded-lg p-4 text-center">
+                                    <p className="text-3xl font-bold text-red-600 dark:text-red-400">
+                                        {managerStats.summary.usersWithLowBalance}
+                                    </p>
+                                    <p className="text-sm text-gray-600 dark:text-gray-400">লো ব্যালেন্স</p>
+                                    <p className="text-xs text-gray-500 dark:text-gray-500">
+                                        &lt;৳{managerStats.summary.lowBalanceThreshold}
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Monthly Stats & Deposits Row */}
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                            {/* Monthly Meal Summary */}
+                            <div className="card">
+                                <h2 className="text-lg font-semibold mb-4 flex items-center gap-2 text-gray-800 dark:text-gray-100">
+                                    <FiList className="text-primary-600" />
+                                    মাসিক মিল সামারি
+                                </h2>
+                                <div className="grid grid-cols-2 gap-4 mb-4">
+                                    <div className="bg-green-50 dark:bg-green-900/20 rounded-lg p-3 text-center">
+                                        <p className="text-2xl font-bold text-green-600 dark:text-green-400">
+                                            {managerStats.monthlyMeals.grandTotalLunch}
+                                        </p>
+                                        <p className="text-xs text-gray-600 dark:text-gray-400">দুপুর (৳{managerStats.monthlyMeals.estimatedLunchCost})</p>
+                                    </div>
+                                    <div className="bg-purple-50 dark:bg-purple-900/20 rounded-lg p-3 text-center">
+                                        <p className="text-2xl font-bold text-purple-600 dark:text-purple-400">
+                                            {managerStats.monthlyMeals.grandTotalDinner}
+                                        </p>
+                                        <p className="text-xs text-gray-600 dark:text-gray-400">রাত (৳{managerStats.monthlyMeals.estimatedDinnerCost})</p>
+                                    </div>
+                                </div>
+                                {/* Top consumers */}
+                                <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">টপ কনজিউমার</p>
+                                <div className="space-y-1 max-h-32 overflow-y-auto">
+                                    {managerStats.monthlyMeals.userWise.slice(0, 5).map((u, idx) => (
+                                        <div key={u._id} className="flex items-center justify-between text-sm p-2 bg-gray-50 dark:bg-gray-800 rounded">
+                                            <span className="text-gray-700 dark:text-gray-300">
+                                                {idx + 1}. {u.name}
+                                            </span>
+                                            <span className="font-medium text-primary-600 dark:text-primary-400">
+                                                {u.totalCount} মিল
+                                            </span>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+
+                            {/* Deposits & Breakfast Pending */}
+                            <div className="space-y-4">
+                                {/* Total Deposits */}
+                                <div className="card">
+                                    <h2 className="text-lg font-semibold mb-3 flex items-center gap-2 text-gray-800 dark:text-gray-100">
+                                        <FiDollarSign className="text-green-500" />
+                                        এই মাসে জমা
+                                    </h2>
+                                    <div className="grid grid-cols-3 gap-2">
+                                        <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-2 text-center">
+                                            <p className="text-lg font-bold text-blue-600 dark:text-blue-400">
+                                                ৳{managerStats.deposits.breakfast.amount}
+                                            </p>
+                                            <p className="text-xs text-gray-500">নাস্তা</p>
+                                        </div>
+                                        <div className="bg-green-50 dark:bg-green-900/20 rounded-lg p-2 text-center">
+                                            <p className="text-lg font-bold text-green-600 dark:text-green-400">
+                                                ৳{managerStats.deposits.lunch.amount}
+                                            </p>
+                                            <p className="text-xs text-gray-500">দুপুর</p>
+                                        </div>
+                                        <div className="bg-purple-50 dark:bg-purple-900/20 rounded-lg p-2 text-center">
+                                            <p className="text-lg font-bold text-purple-600 dark:text-purple-400">
+                                                ৳{managerStats.deposits.dinner.amount}
+                                            </p>
+                                            <p className="text-xs text-gray-500">রাত</p>
+                                        </div>
+                                    </div>
+                                    <div className="mt-2 p-2 bg-gray-100 dark:bg-gray-800 rounded-lg text-center">
+                                        <p className="text-sm text-gray-600 dark:text-gray-400">
+                                            মোট: <span className="font-bold text-primary-600">৳{managerStats.deposits.total.amount}</span>
+                                            <span className="text-xs ml-2">({managerStats.deposits.total.count} টি)</span>
+                                        </p>
+                                    </div>
+                                </div>
+
+                                {/* Breakfast Pending */}
+                                <div className="card">
+                                    <h2 className="text-lg font-semibold mb-3 flex items-center gap-2 text-gray-800 dark:text-gray-100">
+                                        <FiCoffee className="text-yellow-500" />
+                                        নাস্তা পেন্ডিং
+                                    </h2>
+                                    <div className="grid grid-cols-2 gap-2">
+                                        <div className="bg-yellow-50 dark:bg-yellow-900/20 rounded-lg p-3 text-center">
+                                            <p className="text-2xl font-bold text-yellow-600 dark:text-yellow-400">
+                                                {managerStats.breakfastPending.notFinalized.count}
+                                            </p>
+                                            <p className="text-xs text-gray-600 dark:text-gray-400">দিন ফাইনালাইজ বাকি</p>
+                                            <p className="text-xs text-gray-500">৳{managerStats.breakfastPending.notFinalized.totalCost}</p>
+                                        </div>
+                                        <div className="bg-orange-50 dark:bg-orange-900/20 rounded-lg p-3 text-center">
+                                            <p className="text-2xl font-bold text-orange-600 dark:text-orange-400">
+                                                {managerStats.breakfastPending.pendingDeductions.count}
+                                            </p>
+                                            <p className="text-xs text-gray-600 dark:text-gray-400">কাটা বাকি</p>
+                                            <p className="text-xs text-gray-500">৳{managerStats.breakfastPending.pendingDeductions.amount}</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </>
+                ) : null}
+            </RequirePermission>
 
             {/* Current Month Summary */}
             <div className="card">

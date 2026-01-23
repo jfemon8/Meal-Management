@@ -1295,4 +1295,276 @@ router.get('/user/:userId/monthly', protect, async (req, res) => {
     }
 });
 
+// @route   GET /api/reports/manager-dashboard
+// @desc    Get manager dashboard statistics (Manager+ only)
+// @access  Private (Manager+)
+router.get('/manager-dashboard', protect, isManager, async (req, res) => {
+    try {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const todayEnd = new Date(today);
+        todayEnd.setHours(23, 59, 59, 999);
+
+        const year = today.getFullYear();
+        const month = today.getMonth() + 1;
+
+        // Get month settings
+        let monthSettings = await MonthSettings.findOne({ year, month });
+        if (!monthSettings) {
+            const { startDate, endDate } = getDefaultMonthRange(year, month);
+            monthSettings = { startDate, endDate, lunchRate: 0, dinnerRate: 0 };
+        }
+
+        // Get holidays for today
+        const todayHolidays = await Holiday.find({
+            date: today,
+            isActive: true
+        });
+        const isTodayHoliday = todayHolidays.length > 0;
+        const isTodayDefaultOff = isDefaultMealOff(today, todayHolidays.map(h => h.date));
+
+        // Get all active users
+        const activeUsers = await User.find({ isActive: true, isDeleted: { $ne: true } })
+            .select('name balances');
+        const totalUsers = activeUsers.length;
+
+        // ====== 1. Today's Lunch Meal Count ======
+        const todayLunchMeals = await Meal.find({
+            date: today,
+            mealType: 'lunch'
+        });
+
+        let todayLunchOn = 0;
+        let todayLunchTotal = 0;
+
+        activeUsers.forEach(user => {
+            const userMeal = todayLunchMeals.find(m => m.user.toString() === user._id.toString());
+            if (userMeal) {
+                if (userMeal.isOn) {
+                    todayLunchOn++;
+                    todayLunchTotal += userMeal.count;
+                }
+            } else if (!isTodayDefaultOff) {
+                // Default ON if not a holiday/Friday/odd Saturday
+                todayLunchOn++;
+                todayLunchTotal++;
+            }
+        });
+
+        // Today's Dinner Count
+        const todayDinnerMeals = await Meal.find({
+            date: today,
+            mealType: 'dinner'
+        });
+
+        let todayDinnerOn = 0;
+        let todayDinnerTotal = 0;
+
+        activeUsers.forEach(user => {
+            const userMeal = todayDinnerMeals.find(m => m.user.toString() === user._id.toString());
+            if (userMeal) {
+                if (userMeal.isOn) {
+                    todayDinnerOn++;
+                    todayDinnerTotal += userMeal.count;
+                }
+            } else if (!isTodayDefaultOff) {
+                todayDinnerOn++;
+                todayDinnerTotal++;
+            }
+        });
+
+        // ====== 2. Monthly Meal Count (User-wise) ======
+        const holidays = await Holiday.find({
+            date: { $gte: monthSettings.startDate, $lte: monthSettings.endDate },
+            isActive: true
+        });
+        const holidayDates = holidays.map(h => h.date);
+        const dates = getDatesBetween(monthSettings.startDate, monthSettings.endDate);
+
+        const allLunchMeals = await Meal.find({
+            date: { $gte: monthSettings.startDate, $lte: monthSettings.endDate },
+            mealType: 'lunch'
+        });
+
+        const allDinnerMeals = await Meal.find({
+            date: { $gte: monthSettings.startDate, $lte: monthSettings.endDate },
+            mealType: 'dinner'
+        });
+
+        const userMealCounts = activeUsers.map(user => {
+            let lunchCount = 0;
+            let dinnerCount = 0;
+
+            dates.forEach(date => {
+                const dateStr = formatDate(date);
+                const isOff = isDefaultMealOff(date, holidayDates);
+
+                // Lunch
+                const lunchMeal = allLunchMeals.find(m =>
+                    m.user.toString() === user._id.toString() &&
+                    formatDate(m.date) === dateStr
+                );
+                if (lunchMeal) {
+                    if (lunchMeal.isOn) lunchCount += lunchMeal.count;
+                } else if (!isOff) {
+                    lunchCount++;
+                }
+
+                // Dinner
+                const dinnerMeal = allDinnerMeals.find(m =>
+                    m.user.toString() === user._id.toString() &&
+                    formatDate(m.date) === dateStr
+                );
+                if (dinnerMeal) {
+                    if (dinnerMeal.isOn) dinnerCount += dinnerMeal.count;
+                } else if (!isOff) {
+                    dinnerCount++;
+                }
+            });
+
+            return {
+                _id: user._id,
+                name: user.name,
+                lunchCount,
+                dinnerCount,
+                totalCount: lunchCount + dinnerCount
+            };
+        }).sort((a, b) => b.totalCount - a.totalCount);
+
+        // ====== 3. Breakfast Daily Cost Pending ======
+        const pendingBreakfasts = await Breakfast.find({
+            date: { $gte: monthSettings.startDate, $lte: monthSettings.endDate },
+            isFinalized: false
+        });
+
+        const breakfastPending = {
+            count: pendingBreakfasts.length,
+            totalCost: pendingBreakfasts.reduce((sum, b) => sum + b.totalCost, 0),
+            dates: pendingBreakfasts.map(b => ({
+                date: formatDate(b.date),
+                totalCost: b.totalCost,
+                description: b.description
+            }))
+        };
+
+        // Also get pending deductions (not yet deducted from user balance)
+        const breakfastsWithPendingDeductions = await Breakfast.find({
+            date: { $gte: monthSettings.startDate, $lte: monthSettings.endDate },
+            'participants.deducted': false
+        });
+
+        let pendingDeductionCount = 0;
+        let pendingDeductionAmount = 0;
+        breakfastsWithPendingDeductions.forEach(b => {
+            b.participants.forEach(p => {
+                if (!p.deducted) {
+                    pendingDeductionCount++;
+                    pendingDeductionAmount += p.cost;
+                }
+            });
+        });
+
+        // ====== 4. Total Deposited Amount (This Month) ======
+        const monthlyDeposits = await Transaction.aggregate([
+            {
+                $match: {
+                    type: 'deposit',
+                    createdAt: { $gte: monthSettings.startDate, $lte: monthSettings.endDate }
+                }
+            },
+            {
+                $group: {
+                    _id: '$balanceType',
+                    total: { $sum: '$amount' },
+                    count: { $sum: 1 }
+                }
+            }
+        ]);
+
+        const depositSummary = {
+            breakfast: { amount: 0, count: 0 },
+            lunch: { amount: 0, count: 0 },
+            dinner: { amount: 0, count: 0 },
+            total: { amount: 0, count: 0 }
+        };
+
+        monthlyDeposits.forEach(d => {
+            depositSummary[d._id] = { amount: d.total, count: d.count };
+            depositSummary.total.amount += d.total;
+            depositSummary.total.count += d.count;
+        });
+
+        // ====== 5. Additional useful stats ======
+        // Users with low balance
+        const lowBalanceThreshold = 100;
+        const usersWithLowBalance = activeUsers.filter(user => {
+            const totalBalance = (user.balances?.breakfast?.amount || 0) +
+                                (user.balances?.lunch?.amount || 0) +
+                                (user.balances?.dinner?.amount || 0);
+            return totalBalance < lowBalanceThreshold;
+        }).length;
+
+        // Grand totals for the month
+        const grandTotalLunch = userMealCounts.reduce((sum, u) => sum + u.lunchCount, 0);
+        const grandTotalDinner = userMealCounts.reduce((sum, u) => sum + u.dinnerCount, 0);
+
+        res.json({
+            date: formatDate(today),
+            period: {
+                year,
+                month,
+                startDate: monthSettings.startDate,
+                endDate: monthSettings.endDate,
+                isFinalized: monthSettings.isFinalized || false
+            },
+            // Today's meal status
+            todayMeals: {
+                isHoliday: isTodayHoliday,
+                holidayName: isTodayHoliday ? todayHolidays[0].nameBn : null,
+                isDefaultOff: isTodayDefaultOff,
+                lunch: {
+                    usersOn: todayLunchOn,
+                    usersOff: totalUsers - todayLunchOn,
+                    totalMeals: todayLunchTotal
+                },
+                dinner: {
+                    usersOn: todayDinnerOn,
+                    usersOff: totalUsers - todayDinnerOn,
+                    totalMeals: todayDinnerTotal
+                }
+            },
+            // Monthly meal counts
+            monthlyMeals: {
+                grandTotalLunch,
+                grandTotalDinner,
+                grandTotal: grandTotalLunch + grandTotalDinner,
+                lunchRate: monthSettings.lunchRate || 0,
+                dinnerRate: monthSettings.dinnerRate || 0,
+                estimatedLunchCost: grandTotalLunch * (monthSettings.lunchRate || 0),
+                estimatedDinnerCost: grandTotalDinner * (monthSettings.dinnerRate || 0),
+                userWise: userMealCounts.slice(0, 10) // Top 10 consumers
+            },
+            // Breakfast pending
+            breakfastPending: {
+                notFinalized: breakfastPending,
+                pendingDeductions: {
+                    count: pendingDeductionCount,
+                    amount: pendingDeductionAmount
+                }
+            },
+            // Deposits this month
+            deposits: depositSummary,
+            // Summary stats
+            summary: {
+                totalUsers,
+                usersWithLowBalance,
+                lowBalanceThreshold
+            }
+        });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'সার্ভার এরর' });
+    }
+});
+
 module.exports = router;
