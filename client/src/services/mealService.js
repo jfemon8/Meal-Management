@@ -117,6 +117,12 @@ export const userService = {
         return response.data;
     },
 
+    // Create new user (Admin+)
+    createUser: async (userData) => {
+        const response = await api.post('/users', userData);
+        return response.data;
+    },
+
     // Get user by ID
     getUser: async (id) => {
         const response = await api.get(`/users/${id}`);
@@ -335,6 +341,56 @@ export const ruleOverrideService = {
     // Toggle override active status
     toggleOverride: async (id) => {
         const response = await api.post(`/rule-overrides/${id}/toggle`);
+        return response.data;
+    }
+};
+
+export const globalSettingsService = {
+    // Get global settings
+    getSettings: async () => {
+        const response = await api.get('/global-settings');
+        return response.data;
+    },
+
+    // Update global settings (Admin+)
+    updateSettings: async (data) => {
+        const response = await api.put('/global-settings', data);
+        return response.data;
+    },
+
+    // Update default rates (Admin+)
+    updateDefaultRates: async (lunch, dinner) => {
+        const response = await api.put('/global-settings/default-rates', { lunch, dinner });
+        return response.data;
+    },
+
+    // Update cutoff times (Admin+)
+    updateCutoffTimes: async (lunch, dinner) => {
+        const response = await api.put('/global-settings/cutoff-times', { lunch, dinner });
+        return response.data;
+    },
+
+    // Update weekend policy (Admin+)
+    updateWeekendPolicy: async (policy) => {
+        const response = await api.put('/global-settings/weekend-policy', policy);
+        return response.data;
+    },
+
+    // Update holiday policy (Admin+)
+    updateHolidayPolicy: async (policy) => {
+        const response = await api.put('/global-settings/holiday-policy', policy);
+        return response.data;
+    },
+
+    // Update registration settings (Admin+)
+    updateRegistration: async (settings) => {
+        const response = await api.put('/global-settings/registration', settings);
+        return response.data;
+    },
+
+    // Reset to defaults (Admin+)
+    resetToDefaults: async () => {
+        const response = await api.post('/global-settings/reset');
         return response.data;
     }
 };

@@ -37,6 +37,7 @@ app.use('/api/holidays', require('./routes/holidays'));
 app.use('/api/reports', require('./routes/reports'));
 app.use('/api/wallet', require('./routes/wallet'));
 app.use('/api/rule-overrides', require('./routes/ruleOverrides'));
+app.use('/api/global-settings', require('./routes/globalSettings'));
 
 // Error handling middleware
 app.use((err, req, res, next) => {

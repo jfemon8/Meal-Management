@@ -5,6 +5,60 @@ const User = require('../models/User');
 const Transaction = require('../models/Transaction');
 const { protect, isManager, isAdmin, isSuperAdmin } = require('../middleware/auth');
 
+// @route   POST /api/users
+// @desc    Create a new user (Admin+ only)
+// @access  Private (Admin+)
+router.post('/', protect, isAdmin, [
+    body('name').trim().notEmpty().withMessage('নাম আবশ্যক'),
+    body('email').isEmail().withMessage('সঠিক ইমেইল দিন'),
+    body('password').isLength({ min: 6 }).withMessage('পাসওয়ার্ড কমপক্ষে ৬ অক্ষরের হতে হবে'),
+    body('role').optional().isIn(['user', 'manager', 'admin']).withMessage('অবৈধ রোল')
+], async (req, res) => {
+    try {
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+            return res.status(400).json({ errors: errors.array() });
+        }
+
+        const { name, email, password, phone, role } = req.body;
+
+        // Check if user exists
+        const userExists = await User.findOne({ email });
+        if (userExists) {
+            return res.status(400).json({ message: 'এই ইমেইল দিয়ে আগেই রেজিস্ট্রেশন করা হয়েছে' });
+        }
+
+        // Only superadmin can create admin users
+        if (role === 'admin' && req.user.role !== 'superadmin') {
+            return res.status(403).json({ message: 'শুধুমাত্র সুপার এডমিন নতুন এডমিন তৈরি করতে পারবে' });
+        }
+
+        // Create user
+        const user = await User.create({
+            name,
+            email,
+            password,
+            phone,
+            role: role || 'user'
+        });
+
+        res.status(201).json({
+            message: 'ইউজার সফলভাবে তৈরি হয়েছে',
+            user: {
+                _id: user._id,
+                name: user.name,
+                email: user.email,
+                role: user.role,
+                balances: user.balances,
+                isActive: user.isActive
+            }
+        });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'সার্ভার এরর' });
+    }
+});
+
 // @route   GET /api/users
 // @desc    Get all users (for manager+)
 // @access  Private (Manager+)
