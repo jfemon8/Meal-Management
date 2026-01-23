@@ -280,6 +280,80 @@ router.put('/:id/status', protect, isAdmin, async (req, res) => {
     }
 });
 
+// @route   GET /api/users/notification-preferences
+// @desc    Get user notification preferences
+// @access  Private
+router.get('/notification-preferences', protect, async (req, res) => {
+    try {
+        const user = await User.findById(req.user._id).select('notificationPreferences');
+        res.json(user.notificationPreferences || {
+            email: {
+                enabled: true,
+                lowBalance: true,
+                mealReminder: true,
+                monthlyReport: true,
+                systemUpdates: false
+            },
+            push: {
+                enabled: false,
+                lowBalance: true,
+                mealReminder: true
+            },
+            sms: {
+                enabled: false,
+                lowBalance: false
+            }
+        });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'সার্ভার এরর' });
+    }
+});
+
+// @route   PUT /api/users/notification-preferences
+// @desc    Update user notification preferences
+// @access  Private
+router.put('/notification-preferences', protect, async (req, res) => {
+    try {
+        const { email, push, sms } = req.body;
+
+        const user = await User.findById(req.user._id);
+        if (!user) {
+            return res.status(404).json({ message: 'ইউজার পাওয়া যায়নি' });
+        }
+
+        // Update notification preferences
+        if (email !== undefined) {
+            user.notificationPreferences.email = {
+                ...user.notificationPreferences.email,
+                ...email
+            };
+        }
+        if (push !== undefined) {
+            user.notificationPreferences.push = {
+                ...user.notificationPreferences.push,
+                ...push
+            };
+        }
+        if (sms !== undefined) {
+            user.notificationPreferences.sms = {
+                ...user.notificationPreferences.sms,
+                ...sms
+            };
+        }
+
+        await user.save();
+
+        res.json({
+            message: 'নোটিফিকেশন সেটিংস আপডেট হয়েছে',
+            notificationPreferences: user.notificationPreferences
+        });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'সার্ভার এরর' });
+    }
+});
+
 // @route   DELETE /api/users/:id
 // @desc    Delete user (SuperAdmin only)
 // @access  Private (SuperAdmin)

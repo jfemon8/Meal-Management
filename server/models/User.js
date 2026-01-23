@@ -156,6 +156,87 @@ const userSchema = new mongoose.Schema({
         type: String,
         default: ''
     },
+    // Login Activity tracking
+    loginActivity: [{
+        loginAt: {
+            type: Date,
+            default: Date.now
+        },
+        ipAddress: {
+            type: String,
+            default: ''
+        },
+        userAgent: {
+            type: String,
+            default: ''
+        },
+        device: {
+            type: String,
+            default: 'Unknown'
+        },
+        browser: {
+            type: String,
+            default: 'Unknown'
+        },
+        location: {
+            type: String,
+            default: ''
+        },
+        status: {
+            type: String,
+            enum: ['success', 'failed'],
+            default: 'success'
+        }
+    }],
+    // Notification Preferences
+    notificationPreferences: {
+        email: {
+            enabled: {
+                type: Boolean,
+                default: true
+            },
+            lowBalance: {
+                type: Boolean,
+                default: true
+            },
+            mealReminder: {
+                type: Boolean,
+                default: true
+            },
+            monthlyReport: {
+                type: Boolean,
+                default: true
+            },
+            systemUpdates: {
+                type: Boolean,
+                default: false
+            }
+        },
+        push: {
+            enabled: {
+                type: Boolean,
+                default: false
+            },
+            lowBalance: {
+                type: Boolean,
+                default: true
+            },
+            mealReminder: {
+                type: Boolean,
+                default: true
+            }
+        },
+        sms: {
+            enabled: {
+                type: Boolean,
+                default: false
+            },
+            lowBalance: {
+                type: Boolean,
+                default: false
+            }
+        }
+    },
     // Two-Factor Authentication (2FA)
     twoFactorAuth: {
         isEnabled: {

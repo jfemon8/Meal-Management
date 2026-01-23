@@ -2,7 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import api from '../../services/api';
 import toast from 'react-hot-toast';
-import { FiUser, FiMail, FiPhone, FiSave, FiLock } from 'react-icons/fi';
+import { format } from 'date-fns';
+import { bn } from 'date-fns/locale';
+import { FiUser, FiMail, FiPhone, FiSave, FiLock, FiMonitor, FiSmartphone, FiBell, FiMail as FiMailIcon, FiMessageSquare, FiCheckCircle, FiXCircle, FiAlertCircle } from 'react-icons/fi';
 
 const Profile = () => {
     const { user, updateUser } = useAuth();
@@ -18,6 +20,15 @@ const Profile = () => {
     });
     const [loading, setLoading] = useState(false);
     const [passwordLoading, setPasswordLoading] = useState(false);
+    const [loginHistory, setLoginHistory] = useState([]);
+    const [loginLoading, setLoginLoading] = useState(true);
+    const [notificationPrefs, setNotificationPrefs] = useState({
+        email: { enabled: true, lowBalance: true, mealReminder: true, monthlyReport: true, systemUpdates: false },
+        push: { enabled: false, lowBalance: true, mealReminder: true },
+        sms: { enabled: false, lowBalance: false }
+    });
+    const [notifLoading, setNotifLoading] = useState(true);
+    const [notifSaving, setNotifSaving] = useState(false);
 
     useEffect(() => {
         if (user) {
@@ -28,6 +39,75 @@ const Profile = () => {
             });
         }
     }, [user]);
+
+    useEffect(() => {
+        loadLoginHistory();
+        loadNotificationPrefs();
+    }, []);
+
+    const loadLoginHistory = async () => {
+        try {
+            const response = await api.get('/auth/login-history?limit=10');
+            setLoginHistory(response.data.history || []);
+        } catch (error) {
+            console.error('Error loading login history:', error);
+        } finally {
+            setLoginLoading(false);
+        }
+    };
+
+    const loadNotificationPrefs = async () => {
+        try {
+            const response = await api.get('/users/notification-preferences');
+            setNotificationPrefs(response.data);
+        } catch (error) {
+            console.error('Error loading notification preferences:', error);
+        } finally {
+            setNotifLoading(false);
+        }
+    };
+
+    const handleNotifChange = (category, key, value) => {
+        setNotificationPrefs(prev => ({
+            ...prev,
+            [category]: {
+                ...prev[category],
+                [key]: value
+            }
+        }));
+    };
+
+    const saveNotificationPrefs = async () => {
+        setNotifSaving(true);
+        try {
+            await api.put('/users/notification-preferences', notificationPrefs);
+            toast.success('নোটিফিকেশন সেটিংস সেভ হয়েছে');
+        } catch (error) {
+            toast.error('সেটিংস সেভ করতে সমস্যা হয়েছে');
+        } finally {
+            setNotifSaving(false);
+        }
+    };
+
+    const getDeviceIcon = (device) => {
+        if (device?.toLowerCase().includes('mobile') || device?.toLowerCase().includes('android') || device?.toLowerCase().includes('ios')) {
+            return <FiSmartphone className="w-5 h-5" />;
+        }
+        return <FiMonitor className="w-5 h-5" />;
+    };
+
+    const getStatusBadge = (status) => {
+        switch (status) {
+            case 'success':
+                return <span className="inline-flex items-center gap-1 px-2 py-1 bg-green-100 text-green-700 text-xs rounded-full"><FiCheckCircle /> সফল</span>;
+            case 'failed':
+                return <span className="inline-flex items-center gap-1 px-2 py-1 bg-red-100 text-red-700 text-xs rounded-full"><FiXCircle /> ব্যর্থ</span>;
+            case 'suspicious':
+                return <span className="inline-flex items-center gap-1 px-2 py-1 bg-yellow-100 text-yellow-700 text-xs rounded-full"><FiAlertCircle /> সন্দেহজনক</span>;
+            default:
+                return <span className="px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded-full">{status}</span>;
+        }
+    };
 
     const handleChange = (e) => {
         setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -224,7 +304,7 @@ const Profile = () => {
             {/* Role Info */}
             <div className="card">
                 <h2 className="text-lg font-semibold mb-4">রোল তথ্য</h2>
-                <p className="text-gray-600">
+                <p className="text-gray-600 dark:text-gray-400">
                     আপনার রোল:{' '}
                     <span className={`font-medium ${user?.role === 'superadmin' ? 'text-purple-600' :
                             user?.role === 'admin' ? 'text-red-600' :
@@ -236,6 +316,209 @@ const Profile = () => {
                                 user?.role === 'manager' ? 'ম্যানেজার' : 'ইউজার'}
                     </span>
                 </p>
+            </div>
+
+            {/* Login Activity */}
+            <div className="card">
+                <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
+                    <FiMonitor className="text-primary-600" />
+                    লগইন একটিভিটি
+                </h2>
+
+                {loginLoading ? (
+                    <div className="flex items-center justify-center h-24">
+                        <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary-600"></div>
+                    </div>
+                ) : loginHistory.length === 0 ? (
+                    <p className="text-gray-500 text-center py-4">কোন লগইন হিস্ট্রি নেই</p>
+                ) : (
+                    <div className="space-y-3">
+                        {loginHistory.map((login, index) => (
+                            <div key={login._id || index} className="flex items-start gap-3 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                                <div className="text-gray-400 mt-1">
+                                    {getDeviceIcon(login.deviceInfo?.device)}
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                    <div className="flex items-center gap-2 flex-wrap">
+                                        <span className="font-medium text-sm dark:text-gray-200">
+                                            {login.deviceInfo?.browser || 'Unknown'} - {login.deviceInfo?.os || login.deviceInfo?.platform || 'Unknown'}
+                                        </span>
+                                        {getStatusBadge(login.status)}
+                                        {login.isSuspicious && (
+                                            <span className="px-2 py-1 bg-orange-100 text-orange-700 text-xs rounded-full">সতর্কতা</span>
+                                        )}
+                                    </div>
+                                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                                        {login.deviceInfo?.ip && `IP: ${login.deviceInfo.ip} • `}
+                                        {login.loginMethod === 'password' ? 'পাসওয়ার্ড' :
+                                            login.loginMethod === '2fa' ? '2FA' :
+                                                login.loginMethod === 'otp_email' ? 'ইমেইল OTP' : login.loginMethod}
+                                    </p>
+                                    <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
+                                        {format(new Date(login.loginAt), 'dd MMM yyyy, hh:mm a', { locale: bn })}
+                                    </p>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                )}
+            </div>
+
+            {/* Notification Preferences */}
+            <div className="card">
+                <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
+                    <FiBell className="text-primary-600" />
+                    নোটিফিকেশন সেটিংস
+                </h2>
+
+                {notifLoading ? (
+                    <div className="flex items-center justify-center h-24">
+                        <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary-600"></div>
+                    </div>
+                ) : (
+                    <div className="space-y-6">
+                        {/* Email Notifications */}
+                        <div className="border-b pb-4 dark:border-gray-700">
+                            <div className="flex items-center justify-between mb-3">
+                                <div className="flex items-center gap-2">
+                                    <FiMailIcon className="text-blue-500" />
+                                    <span className="font-medium dark:text-gray-200">ইমেইল নোটিফিকেশন</span>
+                                </div>
+                                <label className="relative inline-flex items-center cursor-pointer">
+                                    <input
+                                        type="checkbox"
+                                        checked={notificationPrefs.email?.enabled}
+                                        onChange={(e) => handleNotifChange('email', 'enabled', e.target.checked)}
+                                        className="sr-only peer"
+                                    />
+                                    <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 dark:peer-focus:ring-primary-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-primary-600"></div>
+                                </label>
+                            </div>
+                            {notificationPrefs.email?.enabled && (
+                                <div className="ml-6 space-y-2 text-sm">
+                                    <label className="flex items-center gap-2 cursor-pointer">
+                                        <input
+                                            type="checkbox"
+                                            checked={notificationPrefs.email?.lowBalance}
+                                            onChange={(e) => handleNotifChange('email', 'lowBalance', e.target.checked)}
+                                            className="rounded text-primary-600 focus:ring-primary-500"
+                                        />
+                                        <span className="dark:text-gray-300">লো ব্যালেন্স সতর্কতা</span>
+                                    </label>
+                                    <label className="flex items-center gap-2 cursor-pointer">
+                                        <input
+                                            type="checkbox"
+                                            checked={notificationPrefs.email?.mealReminder}
+                                            onChange={(e) => handleNotifChange('email', 'mealReminder', e.target.checked)}
+                                            className="rounded text-primary-600 focus:ring-primary-500"
+                                        />
+                                        <span className="dark:text-gray-300">মিল রিমাইন্ডার</span>
+                                    </label>
+                                    <label className="flex items-center gap-2 cursor-pointer">
+                                        <input
+                                            type="checkbox"
+                                            checked={notificationPrefs.email?.monthlyReport}
+                                            onChange={(e) => handleNotifChange('email', 'monthlyReport', e.target.checked)}
+                                            className="rounded text-primary-600 focus:ring-primary-500"
+                                        />
+                                        <span className="dark:text-gray-300">মাসিক রিপোর্ট</span>
+                                    </label>
+                                    <label className="flex items-center gap-2 cursor-pointer">
+                                        <input
+                                            type="checkbox"
+                                            checked={notificationPrefs.email?.systemUpdates}
+                                            onChange={(e) => handleNotifChange('email', 'systemUpdates', e.target.checked)}
+                                            className="rounded text-primary-600 focus:ring-primary-500"
+                                        />
+                                        <span className="dark:text-gray-300">সিস্টেম আপডেট</span>
+                                    </label>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Push Notifications */}
+                        <div className="border-b pb-4 dark:border-gray-700">
+                            <div className="flex items-center justify-between mb-3">
+                                <div className="flex items-center gap-2">
+                                    <FiBell className="text-green-500" />
+                                    <span className="font-medium dark:text-gray-200">পুশ নোটিফিকেশন</span>
+                                </div>
+                                <label className="relative inline-flex items-center cursor-pointer">
+                                    <input
+                                        type="checkbox"
+                                        checked={notificationPrefs.push?.enabled}
+                                        onChange={(e) => handleNotifChange('push', 'enabled', e.target.checked)}
+                                        className="sr-only peer"
+                                    />
+                                    <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 dark:peer-focus:ring-primary-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-primary-600"></div>
+                                </label>
+                            </div>
+                            {notificationPrefs.push?.enabled && (
+                                <div className="ml-6 space-y-2 text-sm">
+                                    <label className="flex items-center gap-2 cursor-pointer">
+                                        <input
+                                            type="checkbox"
+                                            checked={notificationPrefs.push?.lowBalance}
+                                            onChange={(e) => handleNotifChange('push', 'lowBalance', e.target.checked)}
+                                            className="rounded text-primary-600 focus:ring-primary-500"
+                                        />
+                                        <span className="dark:text-gray-300">লো ব্যালেন্স সতর্কতা</span>
+                                    </label>
+                                    <label className="flex items-center gap-2 cursor-pointer">
+                                        <input
+                                            type="checkbox"
+                                            checked={notificationPrefs.push?.mealReminder}
+                                            onChange={(e) => handleNotifChange('push', 'mealReminder', e.target.checked)}
+                                            className="rounded text-primary-600 focus:ring-primary-500"
+                                        />
+                                        <span className="dark:text-gray-300">মিল রিমাইন্ডার</span>
+                                    </label>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* SMS Notifications */}
+                        <div className="pb-2">
+                            <div className="flex items-center justify-between mb-3">
+                                <div className="flex items-center gap-2">
+                                    <FiMessageSquare className="text-purple-500" />
+                                    <span className="font-medium dark:text-gray-200">SMS নোটিফিকেশন</span>
+                                </div>
+                                <label className="relative inline-flex items-center cursor-pointer">
+                                    <input
+                                        type="checkbox"
+                                        checked={notificationPrefs.sms?.enabled}
+                                        onChange={(e) => handleNotifChange('sms', 'enabled', e.target.checked)}
+                                        className="sr-only peer"
+                                    />
+                                    <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 dark:peer-focus:ring-primary-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-primary-600"></div>
+                                </label>
+                            </div>
+                            {notificationPrefs.sms?.enabled && (
+                                <div className="ml-6 space-y-2 text-sm">
+                                    <label className="flex items-center gap-2 cursor-pointer">
+                                        <input
+                                            type="checkbox"
+                                            checked={notificationPrefs.sms?.lowBalance}
+                                            onChange={(e) => handleNotifChange('sms', 'lowBalance', e.target.checked)}
+                                            className="rounded text-primary-600 focus:ring-primary-500"
+                                        />
+                                        <span className="dark:text-gray-300">লো ব্যালেন্স সতর্কতা</span>
+                                    </label>
+                                </div>
+                            )}
+                        </div>
+
+                        <button
+                            onClick={saveNotificationPrefs}
+                            disabled={notifSaving}
+                            className="btn btn-primary flex items-center gap-2"
+                        >
+                            <FiSave />
+                            {notifSaving ? 'সেভ হচ্ছে...' : 'সেটিংস সেভ করুন'}
+                        </button>
+                    </div>
+                )}
             </div>
         </div>
     );
