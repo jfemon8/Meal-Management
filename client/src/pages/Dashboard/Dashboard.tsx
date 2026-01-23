@@ -8,6 +8,7 @@ import { bn } from 'date-fns/locale';
 import BDTIcon from '../../components/Icons/BDTIcon';
 import { Skeleton } from '../../components/ui/skeleton';
 import { Link } from 'react-router-dom';
+import { PERMISSIONS, RequirePermission } from '../../utils/permissions';
 
 interface StatCardProps {
     icon: React.ComponentType<{ className?: string }>;
@@ -32,20 +33,8 @@ const StatCard: React.FC<StatCardProps> = ({ icon: Icon, title, value, subtitle,
     </div>
 );
 
-const StatCardSkeleton = () => (
-    <div className="card">
-        <div className="flex items-center justify-between">
-            <div className="flex-1">
-                <Skeleton className="h-4 w-24 mb-2" />
-                <Skeleton className="h-8 w-20 mb-1" />
-            </div>
-            <Skeleton className="h-12 w-12 rounded-full" />
-        </div>
-    </div>
-);
-
 const Dashboard: React.FC = () => {
-    const { user, isManager } = useAuth();
+    const { user } = useAuth();
 
     const today = new Date();
     const year = today.getFullYear();
@@ -177,41 +166,64 @@ const Dashboard: React.FC = () => {
                 </div>
             ) : null}
 
-            {/* Quick Links for Manager */}
-            {isManager && (
+            {/* Quick Links - Permission-Based */}
+            <RequirePermission
+                permission={[
+                    PERMISSIONS.VIEW_DAILY_MEALS,
+                    PERMISSIONS.MANAGE_BREAKFAST,
+                    PERMISSIONS.VIEW_ALL_BALANCES,
+                    PERMISSIONS.VIEW_ALL_REPORTS
+                ]}
+                logic="any"
+            >
                 <div className="card">
                     <h2 className="text-lg font-semibold mb-4 flex items-center gap-2 text-gray-800 dark:text-gray-100">
                         <FiUsers className="text-primary-600" />
-                        দ্রুত লিংক (ম্যানেজার)
+                        দ্রুত লিংক
                     </h2>
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                        <Link
-                            to="/manager/daily-meals"
-                            className="bg-primary-50 hover:bg-primary-100 dark:bg-primary-900/20 dark:hover:bg-primary-900/30 rounded-lg p-4 text-center transition-colors"
-                        >
-                            <p className="font-medium text-primary-700 dark:text-primary-400">দৈনিক মিল</p>
-                        </Link>
-                        <Link
-                            to="/manager/breakfast"
-                            className="bg-blue-50 hover:bg-blue-100 dark:bg-blue-900/20 dark:hover:bg-blue-900/30 rounded-lg p-4 text-center transition-colors"
-                        >
-                            <p className="font-medium text-blue-700 dark:text-blue-400">নাস্তা ম্যানেজ</p>
-                        </Link>
-                        <Link
-                            to="/manager/balance"
-                            className="bg-green-50 hover:bg-green-100 dark:bg-green-900/20 dark:hover:bg-green-900/30 rounded-lg p-4 text-center transition-colors"
-                        >
-                            <p className="font-medium text-green-700 dark:text-green-400">ব্যালেন্স ম্যানেজ</p>
-                        </Link>
-                        <Link
-                            to="/manager/reports"
-                            className="bg-purple-50 hover:bg-purple-100 dark:bg-purple-900/20 dark:hover:bg-purple-900/30 rounded-lg p-4 text-center transition-colors"
-                        >
-                            <p className="font-medium text-purple-700 dark:text-purple-400">সব রিপোর্ট</p>
-                        </Link>
+                        {/* Daily Meals - Only if user can view daily meals */}
+                        <RequirePermission permission={PERMISSIONS.VIEW_DAILY_MEALS}>
+                            <Link
+                                to="/manager/daily-meals"
+                                className="bg-primary-50 hover:bg-primary-100 dark:bg-primary-900/20 dark:hover:bg-primary-900/30 rounded-lg p-4 text-center transition-colors"
+                            >
+                                <p className="font-medium text-primary-700 dark:text-primary-400">দৈনিক মিল</p>
+                            </Link>
+                        </RequirePermission>
+
+                        {/* Breakfast Management - Only if user can manage breakfast */}
+                        <RequirePermission permission={PERMISSIONS.MANAGE_BREAKFAST}>
+                            <Link
+                                to="/manager/breakfast"
+                                className="bg-blue-50 hover:bg-blue-100 dark:bg-blue-900/20 dark:hover:bg-blue-900/30 rounded-lg p-4 text-center transition-colors"
+                            >
+                                <p className="font-medium text-blue-700 dark:text-blue-400">নাস্তা ম্যানেজ</p>
+                            </Link>
+                        </RequirePermission>
+
+                        {/* Balance Management - Only if user can update balances */}
+                        <RequirePermission permission={PERMISSIONS.UPDATE_BALANCES}>
+                            <Link
+                                to="/manager/balance"
+                                className="bg-green-50 hover:bg-green-100 dark:bg-green-900/20 dark:hover:bg-green-900/30 rounded-lg p-4 text-center transition-colors"
+                            >
+                                <p className="font-medium text-green-700 dark:text-green-400">ব্যালেন্স ম্যানেজ</p>
+                            </Link>
+                        </RequirePermission>
+
+                        {/* Reports - Only if user can view all reports */}
+                        <RequirePermission permission={PERMISSIONS.VIEW_ALL_REPORTS}>
+                            <Link
+                                to="/manager/reports"
+                                className="bg-purple-50 hover:bg-purple-100 dark:bg-purple-900/20 dark:hover:bg-purple-900/30 rounded-lg p-4 text-center transition-colors"
+                            >
+                                <p className="font-medium text-purple-700 dark:text-purple-400">সব রিপোর্ট</p>
+                            </Link>
+                        </RequirePermission>
                     </div>
                 </div>
-            )}
+            </RequirePermission>
         </div>
     );
 };

@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import api from '../../services/api';
+import { Permission } from '../../config/permissions';
 
 interface User {
     _id: string;
@@ -7,6 +8,7 @@ interface User {
     email: string;
     phone?: string;
     role: 'user' | 'manager' | 'admin' | 'superadmin';
+    permissions: Permission[];
     balances: {
         breakfast: number;
         lunch: number;

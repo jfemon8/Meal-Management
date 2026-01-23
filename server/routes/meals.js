@@ -5,6 +5,8 @@ const Meal = require('../models/Meal');
 const Holiday = require('../models/Holiday');
 const MonthSettings = require('../models/MonthSettings');
 const { protect, isManager } = require('../middleware/auth');
+const { requirePermission, requireOwnershipOrPermission } = require('../middleware/permissions');
+const { PERMISSIONS } = require('../config/permissions');
 const {
     isDefaultMealOff,
     isPast,
@@ -16,14 +18,24 @@ const {
 
 // @route   GET /api/meals/status
 // @desc    Get meal status for a date range
-// @access  Private
+// @access  Private (VIEW_OWN_MEALS or VIEW_ALL_MEALS)
 router.get('/status', protect, async (req, res) => {
     try {
         const { startDate, endDate, userId } = req.query;
 
-        // Users can only see their own meals, managers+ can see all
+        // Users can only see their own meals, unless they have VIEW_ALL_MEALS permission
         let targetUserId = req.user._id;
-        if (userId && ['manager', 'admin', 'superadmin'].includes(req.user.role)) {
+        if (userId) {
+            // Check if user has permission to view other users' meals
+            const User = require('../models/User');
+            const currentUser = await User.findById(req.user._id);
+
+            if (!currentUser.hasPermission(PERMISSIONS.VIEW_ALL_MEALS)) {
+                return res.status(403).json({
+                    message: 'আপনি শুধুমাত্র নিজের মিল দেখতে পারবেন।'
+                });
+            }
+
             targetUserId = userId;
         }
 

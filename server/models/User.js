@@ -28,6 +28,12 @@ const userSchema = new mongoose.Schema({
         enum: ['user', 'manager', 'admin', 'superadmin'],
         default: 'user'
     },
+    // Custom permissions array for specific user permissions (optional)
+    // These are in addition to role-based permissions
+    permissions: {
+        type: [String],
+        default: []
+    },
     // Separate balances for different meal types
     balances: {
         breakfast: {
@@ -81,6 +87,29 @@ userSchema.methods.matchPassword = async function (enteredPassword) {
 // Get total balance
 userSchema.methods.getTotalBalance = function () {
     return this.balances.breakfast + this.balances.lunch + this.balances.dinner;
+};
+
+// Check if user has a specific permission
+userSchema.methods.hasPermission = function (permission) {
+    const { hasPermission, hasCustomPermission } = require('../config/permissions');
+
+    // Check role-based permission
+    const hasRolePermission = hasPermission(this.role, permission);
+
+    // Check custom user permission
+    const hasUserPermission = hasCustomPermission(this.permissions, permission);
+
+    return hasRolePermission || hasUserPermission;
+};
+
+// Get all permissions for this user (role + custom)
+userSchema.methods.getAllPermissions = function () {
+    const { getRolePermissions } = require('../config/permissions');
+    const rolePerms = getRolePermissions(this.role);
+    const customPerms = this.permissions || [];
+
+    // Combine and remove duplicates
+    return [...new Set([...rolePerms, ...customPerms])];
 };
 
 module.exports = mongoose.model('User', userSchema);

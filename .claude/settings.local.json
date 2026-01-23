@@ -20,7 +20,8 @@
       "Bash(taskkill:*)",
       "Bash(grep:*)",
       "Bash(del AuthContext.js)",
-      "Bash(tasklist:*)"
+      "Bash(tasklist:*)",
+      "Bash(npm run server:*)"
     ]
   }
 }

@@ -2,13 +2,15 @@ import React, { createContext, useContext, ReactNode } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useCurrentUser } from '../hooks/queries/useAuth';
 import { useLogin as useLoginMutation, useRegister as useRegisterMutation, useLogout as useLogoutMutation } from '../hooks/mutations/useAuthMutations';
+import { Permission } from '../config/permissions';
 
-interface User {
+export interface User {
     _id: string;
     name: string;
     email: string;
     phone?: string;
     role: 'user' | 'manager' | 'admin' | 'superadmin';
+    permissions: Permission[];
     isActive: boolean;
     balances: {
         breakfast: number;
@@ -25,6 +27,9 @@ interface AuthContextType {
     logout: () => void;
     updateUser: (userData: Partial<User>) => void;
     hasRole: (requiredRole: string) => boolean;
+    hasPermission: (permission: Permission) => boolean;
+    hasAnyPermission: (permissions: Permission[]) => boolean;
+    hasAllPermissions: (permissions: Permission[]) => boolean;
     isManager: boolean;
     isAdmin: boolean;
     isSuperAdmin: boolean;
@@ -69,7 +74,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         }
     };
 
-    // Check if user has required role
+    // Check if user has required role (legacy method - kept for backward compatibility)
     const hasRole = (requiredRole: string): boolean => {
         if (!user) return false;
 
@@ -83,6 +88,24 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         return roleHierarchy[user.role] >= roleHierarchy[requiredRole];
     };
 
+    // Check if user has a specific permission
+    const hasPermission = (permission: Permission): boolean => {
+        if (!user || !user.permissions) return false;
+        return user.permissions.includes(permission);
+    };
+
+    // Check if user has any of the given permissions (OR logic)
+    const hasAnyPermission = (permissions: Permission[]): boolean => {
+        if (!user || !user.permissions) return false;
+        return permissions.some(perm => user.permissions.includes(perm));
+    };
+
+    // Check if user has all of the given permissions (AND logic)
+    const hasAllPermissions = (permissions: Permission[]): boolean => {
+        if (!user || !user.permissions) return false;
+        return permissions.every(perm => user.permissions.includes(perm));
+    };
+
     const value: AuthContextType = {
         user,
         loading: isLoading,
@@ -91,6 +114,9 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         logout,
         updateUser,
         hasRole,
+        hasPermission,
+        hasAnyPermission,
+        hasAllPermissions,
         isManager: user ? ['manager', 'admin', 'superadmin'].includes(user.role) : false,
         isAdmin: user ? ['admin', 'superadmin'].includes(user.role) : false,
         isSuperAdmin: user ? user.role === 'superadmin' : false

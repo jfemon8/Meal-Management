@@ -47,6 +47,7 @@ router.post('/register', [
             name: user.name,
             email: user.email,
             role: user.role,
+            permissions: user.getAllPermissions(),
             balances: user.balances,
             token: generateToken(user._id)
         });
@@ -93,6 +94,7 @@ router.post('/login', [
             name: user.name,
             email: user.email,
             role: user.role,
+            permissions: user.getAllPermissions(),
             balances: user.balances,
             token: generateToken(user._id)
         });
@@ -111,7 +113,12 @@ router.post('/login', [
 router.get('/me', protect, async (req, res) => {
     try {
         const user = await User.findById(req.user._id).select('-password');
-        res.json(user);
+        const userObj = user.toObject();
+
+        // Add computed permissions
+        userObj.permissions = user.getAllPermissions();
+
+        res.json(userObj);
     } catch (error) {
         console.error(error);
         res.status(500).json({ message: 'সার্ভার এরর' });
