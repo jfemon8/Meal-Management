@@ -16,6 +16,8 @@ const Profile = lazy(() => import('./pages/Profile/Profile'));
 const MealCalendar = lazy(() => import('./pages/Meals/MealCalendar'));
 const Transactions = lazy(() => import('./pages/Transactions/Transactions'));
 const MonthlyReport = lazy(() => import('./pages/Reports/MonthlyReport'));
+const Wallet = lazy(() => import('./pages/Wallet/Wallet'));
+const Settings = lazy(() => import('./pages/Settings/Settings'));
 
 // Manager Pages
 const UsersList = lazy(() => import('./pages/Manager/UsersList'));
@@ -58,6 +60,8 @@ function App() {
                     <Route index element={<Navigate to="/dashboard" />} />
                     <Route path="dashboard" element={<Dashboard />} />
                     <Route path="profile" element={<Profile />} />
+                    <Route path="wallet" element={<Wallet />} />
+                    <Route path="settings" element={<Settings />} />
                     <Route path="meals" element={<MealCalendar />} />
                     <Route path="transactions" element={<Transactions />} />
                     <Route path="reports/monthly" element={<MonthlyReport />} />

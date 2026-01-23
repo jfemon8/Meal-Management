@@ -9,6 +9,7 @@ import BDTIcon from '../../components/Icons/BDTIcon';
 import { Skeleton } from '../../components/ui/skeleton';
 import { Link } from 'react-router-dom';
 import { PERMISSIONS, RequirePermission } from '../../utils/permissions';
+import LowBalanceWarning from '../../components/Wallet/LowBalanceWarning';
 
 interface StatCardProps {
     icon: React.ComponentType<{ className?: string }>;
@@ -59,24 +60,33 @@ const Dashboard: React.FC = () => {
                 </div>
             </div>
 
+            {/* Low Balance Warning */}
+            <LowBalanceWarning
+                balances={user?.balances}
+                threshold={user?.balanceWarning?.threshold || 100}
+            />
+
             {/* Balance Cards */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <StatCard
                     icon={BDTIcon}
                     title="নাস্তা ব্যালেন্স"
-                    value={`৳${user?.balances?.breakfast || 0}`}
+                    value={`৳${user?.balances?.breakfast?.amount || 0}`}
+                    subtitle={user?.balances?.breakfast?.isFrozen ? '🔒 ফ্রিজ করা আছে' : undefined}
                     color="text-blue-600"
                 />
                 <StatCard
                     icon={BDTIcon}
                     title="দুপুরের ব্যালেন্স"
-                    value={`৳${user?.balances?.lunch || 0}`}
+                    value={`৳${user?.balances?.lunch?.amount || 0}`}
+                    subtitle={user?.balances?.lunch?.isFrozen ? '🔒 ফ্রিজ করা আছে' : undefined}
                     color="text-green-600"
                 />
                 <StatCard
                     icon={BDTIcon}
                     title="রাতের ব্যালেন্স"
-                    value={`৳${user?.balances?.dinner || 0}`}
+                    value={`৳${user?.balances?.dinner?.amount || 0}`}
+                    subtitle={user?.balances?.dinner?.isFrozen ? '🔒 ফ্রিজ করা আছে' : undefined}
                     color="text-purple-600"
                 />
             </div>

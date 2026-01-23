@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { userService } from '../../services/mealService';
 import toast from 'react-hot-toast';
-import { FiSearch, FiUser, FiPlus, FiMinus } from 'react-icons/fi';
+import { FiSearch, FiUser, FiPlus, FiMinus, FiLock } from 'react-icons/fi';
 import BDTIcon from '../../components/Icons/BDTIcon';
+import FreezeBalanceModal from '../../components/Wallet/FreezeBalanceModal';
 
 const UserBalance = () => {
     const [users, setUsers] = useState([]);
@@ -16,6 +17,7 @@ const UserBalance = () => {
         description: ''
     });
     const [submitting, setSubmitting] = useState(false);
+    const [showFreezeModal, setShowFreezeModal] = useState(false);
 
     useEffect(() => {
         loadUsers();
@@ -141,18 +143,40 @@ const UserBalance = () => {
                     {selectedUser && (
                         <>
                             {/* Current Balance */}
-                            <div className="grid grid-cols-3 gap-4 p-4 bg-gray-50 rounded-lg">
-                                <div className="text-center">
-                                    <p className="text-sm text-gray-500">নাস্তা</p>
-                                    <p className="font-bold text-blue-600">৳{selectedUser.balances?.breakfast || 0}</p>
+                            <div>
+                                <div className="flex items-center justify-between mb-2">
+                                    <label className="label">বর্তমান ব্যালেন্স</label>
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowFreezeModal(true)}
+                                        className="btn-secondary text-sm flex items-center gap-2"
+                                    >
+                                        <FiLock className="w-4 h-4" />
+                                        ফ্রিজ/আনফ্রিজ
+                                    </button>
                                 </div>
-                                <div className="text-center">
-                                    <p className="text-sm text-gray-500">দুপুর</p>
-                                    <p className="font-bold text-green-600">৳{selectedUser.balances?.lunch || 0}</p>
-                                </div>
-                                <div className="text-center">
-                                    <p className="text-sm text-gray-500">রাত</p>
-                                    <p className="font-bold text-purple-600">৳{selectedUser.balances?.dinner || 0}</p>
+                                <div className="grid grid-cols-3 gap-4 p-4 bg-gray-50 rounded-lg">
+                                    <div className="text-center">
+                                        <p className="text-sm text-gray-500">নাস্তা</p>
+                                        <p className="font-bold text-blue-600">৳{selectedUser.balances?.breakfast?.amount || 0}</p>
+                                        {selectedUser.balances?.breakfast?.isFrozen && (
+                                            <p className="text-xs text-red-600 mt-1">🔒 ফ্রিজ</p>
+                                        )}
+                                    </div>
+                                    <div className="text-center">
+                                        <p className="text-sm text-gray-500">দুপুর</p>
+                                        <p className="font-bold text-green-600">৳{selectedUser.balances?.lunch?.amount || 0}</p>
+                                        {selectedUser.balances?.lunch?.isFrozen && (
+                                            <p className="text-xs text-red-600 mt-1">🔒 ফ্রিজ</p>
+                                        )}
+                                    </div>
+                                    <div className="text-center">
+                                        <p className="text-sm text-gray-500">রাত</p>
+                                        <p className="font-bold text-purple-600">৳{selectedUser.balances?.dinner?.amount || 0}</p>
+                                        {selectedUser.balances?.dinner?.isFrozen && (
+                                            <p className="text-xs text-red-600 mt-1">🔒 ফ্রিজ</p>
+                                        )}
+                                    </div>
                                 </div>
                             </div>
 
@@ -239,6 +263,21 @@ const UserBalance = () => {
                     )}
                 </form>
             </div>
+
+            {/* Freeze Balance Modal */}
+            {selectedUser && (
+                <FreezeBalanceModal
+                    isOpen={showFreezeModal}
+                    onClose={() => setShowFreezeModal(false)}
+                    userId={selectedUser._id}
+                    userName={selectedUser.name}
+                    currentBalances={selectedUser.balances || {}}
+                    onSuccess={() => {
+                        loadUsers();
+                        setShowFreezeModal(false);
+                    }}
+                />
+            )}
         </div>
     );
 };

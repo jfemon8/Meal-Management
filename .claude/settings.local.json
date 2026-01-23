@@ -22,7 +22,14 @@
       "Bash(del AuthContext.js)",
       "Bash(tasklist:*)",
       "Bash(npm run server:*)",
-      "Bash(timeout 2 tail:*)"
+      "Bash(timeout 2 tail:*)",
+      "Bash(npx tsc:*)",
+      "Bash(pkill:*)",
+      "Bash(cmd /c \"taskkill /F /PID 17364\")",
+      "Bash(powershell \"Stop-Process -Id 17364 -Force\")",
+      "Bash(net start:*)",
+      "Bash(sc query:*)",
+      "Bash(powershell \"Get-Process node -ErrorAction SilentlyContinue | Stop-Process -Force\")"
     ]
   }
 }

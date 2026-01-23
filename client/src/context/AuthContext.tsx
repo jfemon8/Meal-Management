@@ -13,9 +13,32 @@ export interface User {
     permissions: Permission[];
     isActive: boolean;
     balances: {
-        breakfast: number;
-        lunch: number;
-        dinner: number;
+        breakfast: {
+            amount: number;
+            isFrozen: boolean;
+            frozenAt?: string | null;
+            frozenBy?: string | null;
+            frozenReason?: string;
+        };
+        lunch: {
+            amount: number;
+            isFrozen: boolean;
+            frozenAt?: string | null;
+            frozenBy?: string | null;
+            frozenReason?: string;
+        };
+        dinner: {
+            amount: number;
+            isFrozen: boolean;
+            frozenAt?: string | null;
+            frozenBy?: string | null;
+            frozenReason?: string;
+        };
+    };
+    balanceWarning?: {
+        threshold: number;
+        notified: boolean;
+        lastNotifiedAt?: string | null;
     };
 }
 

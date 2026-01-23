@@ -2,6 +2,14 @@ import { useQuery } from '@tanstack/react-query';
 import api from '../../services/api';
 import { Permission } from '../../config/permissions';
 
+interface BalanceInfo {
+    amount: number;
+    isFrozen: boolean;
+    frozenAt?: string | null;
+    frozenBy?: string | null;
+    frozenReason?: string;
+}
+
 interface User {
     _id: string;
     name: string;
@@ -10,9 +18,14 @@ interface User {
     role: 'user' | 'manager' | 'admin' | 'superadmin';
     permissions: Permission[];
     balances: {
-        breakfast: number;
-        lunch: number;
-        dinner: number;
+        breakfast: BalanceInfo;
+        lunch: BalanceInfo;
+        dinner: BalanceInfo;
+    };
+    balanceWarning?: {
+        threshold: number;
+        notified: boolean;
+        lastNotifiedAt?: string | null;
     };
     isActive: boolean;
     createdAt: string;
