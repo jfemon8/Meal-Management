@@ -10,7 +10,7 @@ const transactionSchema = new mongoose.Schema({
     // Type of transaction
     type: {
         type: String,
-        enum: ['deposit', 'deduction', 'adjustment', 'refund'],
+        enum: ['deposit', 'deduction', 'adjustment', 'refund', 'reversal'],
         required: true
     },
     // Which balance type
@@ -46,7 +46,23 @@ const transactionSchema = new mongoose.Schema({
     },
     referenceModel: {
         type: String,
-        enum: ['Breakfast', 'Meal', 'MonthSettings']
+        enum: ['Breakfast', 'Meal', 'MonthSettings', 'Transaction']
+    },
+    // Original transaction being reversed (for reversals only)
+    originalTransaction: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Transaction',
+        default: null
+    },
+    // Reversal reason (required for reversals)
+    reversalReason: {
+        type: String,
+        default: ''
+    },
+    // Is this transaction reversed
+    isReversed: {
+        type: Boolean,
+        default: false
     },
     // Who performed this transaction
     performedBy: {

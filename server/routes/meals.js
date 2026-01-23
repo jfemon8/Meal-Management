@@ -567,4 +567,208 @@ router.get('/audit-log/:userId', protect, isManager, async (req, res) => {
     }
 });
 
+// @route   POST /api/meals/recalculate
+// @desc    Recalculate meals for a month based on current rules (Manager+ only)
+// @access  Private (Manager+)
+router.post('/recalculate', protect, isManager, [
+    body('year').isInt({ min: 2020, max: 2030 }).withMessage('বছর ২০২০-২০৩০ এর মধ্যে হতে হবে'),
+    body('month').isInt({ min: 1, max: 12 }).withMessage('মাস ১-১২ এর মধ্যে হতে হবে'),
+    body('mealType').optional().isIn(['lunch', 'dinner', 'both']).withMessage('মিল টাইপ অবৈধ')
+], async (req, res) => {
+    try {
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+            return res.status(400).json({ errors: errors.array() });
+        }
+
+        const { year, month, mealType = 'both', userId } = req.body;
+
+        // Get month settings
+        const MonthSettings = require('../models/MonthSettings');
+        let monthSettings = await MonthSettings.findOne({ year, month });
+
+        if (!monthSettings) {
+            return res.status(404).json({ message: 'এই মাসের সেটিংস পাওয়া যায়নি' });
+        }
+
+        // Check if month is finalized
+        if (monthSettings.isFinalized) {
+            return res.status(400).json({ message: 'ফাইনালাইজড মাসের মিল রিক্যালকুলেট করা যাবে না' });
+        }
+
+        // Get holidays
+        const holidays = await Holiday.find({
+            date: { $gte: monthSettings.startDate, $lte: monthSettings.endDate },
+            isActive: true
+        });
+        const holidayDates = holidays.map(h => h.date);
+
+        // Get users to recalculate (all or specific)
+        const User = require('../models/User');
+        let users;
+        if (userId) {
+            users = await User.find({ _id: userId, isActive: true });
+        } else {
+            users = await User.find({ isActive: true });
+        }
+
+        // Get dates in range
+        const dates = getDatesBetween(monthSettings.startDate, monthSettings.endDate);
+        const mealTypes = mealType === 'both' ? ['lunch', 'dinner'] : [mealType];
+
+        let updatedCount = 0;
+        let createdCount = 0;
+        const recalculationResults = [];
+
+        for (const user of users) {
+            for (const type of mealTypes) {
+                for (const date of dates) {
+                    const isDefaultOff = isDefaultMealOff(date, holidayDates);
+
+                    // Find existing meal record
+                    const existingMeal = await Meal.findOne({
+                        user: user._id,
+                        date,
+                        mealType: type
+                    });
+
+                    // If no manual setting exists, create/update based on default rules
+                    if (!existingMeal || !existingMeal.isManuallySet) {
+                        const expectedIsOn = !isDefaultOff;
+                        const expectedCount = expectedIsOn ? 1 : 0;
+
+                        if (existingMeal) {
+                            // Only update if different from expected
+                            if (existingMeal.isOn !== expectedIsOn || existingMeal.count !== expectedCount) {
+                                existingMeal.isOn = expectedIsOn;
+                                existingMeal.count = expectedCount;
+                                existingMeal.modifiedBy = req.user._id;
+                                await existingMeal.save();
+                                updatedCount++;
+                            }
+                        } else {
+                            // Create new meal record with default status
+                            await Meal.create({
+                                user: user._id,
+                                date,
+                                mealType: type,
+                                isOn: expectedIsOn,
+                                count: expectedCount,
+                                modifiedBy: req.user._id,
+                                isManuallySet: false
+                            });
+                            createdCount++;
+                        }
+                    }
+                }
+            }
+
+            recalculationResults.push({
+                userId: user._id,
+                userName: user.name
+            });
+        }
+
+        // Create audit log
+        await MealAuditLog.create({
+            user: req.user._id,
+            date: new Date(),
+            mealType: mealType === 'both' ? 'lunch' : mealType,
+            action: 'manager_override',
+            previousState: { isOn: null, count: null },
+            newState: { isOn: null, count: null },
+            changedBy: req.user._id,
+            changedByRole: req.user.role,
+            notes: `Recalculate meals for ${year}-${month}, Type: ${mealType}, Users: ${users.length}`,
+            ipAddress: req.ip || req.connection?.remoteAddress || ''
+        });
+
+        res.json({
+            message: 'মিল সফলভাবে রিক্যালকুলেট করা হয়েছে',
+            year,
+            month,
+            mealType,
+            stats: {
+                usersProcessed: users.length,
+                mealsCreated: createdCount,
+                mealsUpdated: updatedCount,
+                daysProcessed: dates.length
+            },
+            note: 'শুধুমাত্র ম্যানুয়ালি সেট করা নয় এমন মিল রিক্যালকুলেট হয়েছে'
+        });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'সার্ভার এরর' });
+    }
+});
+
+// @route   POST /api/meals/reset-to-default
+// @desc    Reset all meals to default for a date range (Admin+ only)
+// @access  Private (Admin+)
+router.post('/reset-to-default', protect, async (req, res) => {
+    try {
+        // Only admin+ can reset
+        if (!['admin', 'superadmin'].includes(req.user.role)) {
+            return res.status(403).json({ message: 'শুধুমাত্র এডমিন রিসেট করতে পারবে' });
+        }
+
+        const { startDate, endDate, mealType = 'both', userId } = req.body;
+
+        if (!startDate || !endDate) {
+            return res.status(400).json({ message: 'শুরু ও শেষ তারিখ আবশ্যক' });
+        }
+
+        const start = new Date(startDate);
+        const end = new Date(endDate);
+
+        // Max 31 days
+        const daysDiff = Math.ceil((end - start) / (1000 * 60 * 60 * 24)) + 1;
+        if (daysDiff > 31) {
+            return res.status(400).json({ message: 'সর্বোচ্চ ৩১ দিনের রেঞ্জ রিসেট করতে পারবেন' });
+        }
+
+        const query = {
+            date: { $gte: start, $lte: end }
+        };
+
+        if (userId) {
+            query.user = userId;
+        }
+
+        if (mealType !== 'both') {
+            query.mealType = mealType;
+        }
+
+        // Delete manually set meals (reset to default)
+        const result = await Meal.deleteMany({
+            ...query,
+            isManuallySet: true
+        });
+
+        // Create audit log
+        await MealAuditLog.create({
+            user: req.user._id,
+            date: new Date(),
+            mealType: mealType === 'both' ? 'lunch' : mealType,
+            action: 'manager_override',
+            previousState: { isOn: null, count: null },
+            newState: { isOn: null, count: null },
+            changedBy: req.user._id,
+            changedByRole: req.user.role,
+            notes: `Reset to default: ${formatDate(start)} - ${formatDate(end)}, Type: ${mealType}, Deleted: ${result.deletedCount}`,
+            ipAddress: req.ip || req.connection?.remoteAddress || ''
+        });
+
+        res.json({
+            message: 'মিল ডিফল্টে রিসেট করা হয়েছে',
+            deletedCount: result.deletedCount,
+            startDate: formatDate(start),
+            endDate: formatDate(end)
+        });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'সার্ভার এরর' });
+    }
+});
+
 module.exports = router;

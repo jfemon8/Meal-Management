@@ -53,6 +53,22 @@ export const mealService = {
     getUserAuditLog: async (userId, params = {}) => {
         const response = await api.get(`/meals/audit-log/${userId}`, { params });
         return response.data;
+    },
+
+    // Recalculate meals based on current rules (Manager+)
+    recalculateMeals: async (year, month, mealType = 'lunch', userId = null) => {
+        const data = { year, month, mealType };
+        if (userId) data.userId = userId;
+        const response = await api.post('/meals/recalculate', data);
+        return response.data;
+    },
+
+    // Reset meals to default for date range (Admin+)
+    resetToDefault: async (startDate, endDate, mealType = 'lunch', userId = null) => {
+        const data = { startDate, endDate, mealType };
+        if (userId) data.userId = userId;
+        const response = await api.post('/meals/reset-to-default', data);
+        return response.data;
     }
 };
 
@@ -231,6 +247,18 @@ export const transactionService = {
     // Get all transactions (Manager+)
     getAllTransactions: async (params = {}) => {
         const response = await api.get('/transactions/all', { params });
+        return response.data;
+    },
+
+    // Get single transaction (Manager+)
+    getTransaction: async (transactionId) => {
+        const response = await api.get(`/transactions/${transactionId}`);
+        return response.data;
+    },
+
+    // Reverse a transaction (Manager+)
+    reverseTransaction: async (transactionId, reason) => {
+        const response = await api.post(`/transactions/${transactionId}/reverse`, { reason });
         return response.data;
     }
 };
