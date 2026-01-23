@@ -16,6 +16,15 @@ const {
 } = require('../utils/tokenManager');
 const { extractDeviceInfo } = require('../utils/deviceFingerprint');
 const { sendOTPEmail, sendPasswordResetEmail, sendWelcomeEmail, sendLoginAlertEmail } = require('../utils/emailService');
+const {
+    generateSecret,
+    generateQRCode,
+    verifyToken,
+    generateBackupCodes,
+    verifyBackupCode,
+    formatBackupCodesForDisplay,
+    getSetupInstructions
+} = require('../utils/twoFactorAuth');
 
 // Generate JWT Token (Legacy - kept for backward compatibility)
 const generateToken = (id) => {
@@ -144,6 +153,15 @@ router.post('/login', [
                 failureMessage: 'ভুল ইমেইল বা পাসওয়ার্ড'
             });
             return res.status(401).json({ message: 'ভুল ইমেইল বা পাসওয়ার্ড' });
+        }
+
+        // Check if 2FA is enabled
+        if (user.twoFactorAuth && user.twoFactorAuth.isEnabled) {
+            return res.json({
+                requires2FA: true,
+                userId: user._id,
+                message: '2FA কোড প্রবেশ করুন'
+            });
         }
 
         // Check for suspicious activity
@@ -608,6 +626,276 @@ router.get('/login-stats', protect, async (req, res) => {
     } catch (error) {
         console.error('Get Login Stats Error:', error);
         res.status(500).json({ message: 'সার্ভার এরর' });
+    }
+});
+
+// ==================== Two-Factor Authentication (2FA) Endpoints ====================
+
+// @route   POST /api/auth/2fa/setup
+// @desc    Generate 2FA secret and QR code for user
+// @access  Private
+router.post('/2fa/setup', protect, async (req, res) => {
+    try {
+        const user = await User.findById(req.user._id);
+
+        // Generate new secret
+        const { secret, otpauthUrl } = generateSecret(user.email, user.name);
+
+        // Generate QR code
+        const qrCodeDataURL = await generateQRCode(otpauthUrl);
+
+        // Generate backup codes
+        const backupCodes = generateBackupCodes(10);
+
+        // Get setup instructions
+        const instructions = getSetupInstructions();
+
+        // Store secret temporarily (not enabled yet)
+        user.twoFactorAuth.secret = secret;
+        user.twoFactorAuth.backupCodes = backupCodes;
+        await user.save();
+
+        res.json({
+            secret,
+            qrCode: qrCodeDataURL,
+            backupCodes: formatBackupCodesForDisplay(backupCodes),
+            instructions,
+            message: '2FA সেটআপ শুরু হয়েছে। QR কোড স্ক্যান করুন এবং যাচাই করুন।'
+        });
+    } catch (error) {
+        console.error('2FA Setup Error:', error);
+        res.status(500).json({ message: error.message || '2FA সেটআপ ব্যর্থ হয়েছে' });
+    }
+});
+
+// @route   POST /api/auth/2fa/verify-setup
+// @desc    Verify and enable 2FA
+// @access  Private
+router.post('/2fa/verify-setup', protect, [
+    body('token').notEmpty().withMessage('টোকেন আবশ্যক')
+], async (req, res) => {
+    try {
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+            return res.status(400).json({ errors: errors.array() });
+        }
+
+        const { token } = req.body;
+        const user = await User.findById(req.user._id);
+
+        if (!user.twoFactorAuth.secret) {
+            return res.status(400).json({ message: 'প্রথমে 2FA সেটআপ শুরু করুন' });
+        }
+
+        // Verify token
+        const isValid = verifyToken(token, user.twoFactorAuth.secret);
+
+        if (!isValid) {
+            return res.status(400).json({ message: 'ভুল টোকেন। আবার চেষ্টা করুন।' });
+        }
+
+        // Enable 2FA
+        user.twoFactorAuth.isEnabled = true;
+        user.twoFactorAuth.enabledAt = new Date();
+        user.twoFactorAuth.method = 'totp';
+        await user.save();
+
+        // Revoke all existing sessions for security
+        await revokeAllUserTokens(user._id, '2fa_enabled');
+
+        res.json({
+            message: '2FA সফলভাবে সক্রিয় হয়েছে। ব্যাকআপ কোডগুলি নিরাপদ স্থানে সংরক্ষণ করুন।',
+            backupCodes: formatBackupCodesForDisplay(user.twoFactorAuth.backupCodes),
+            enabled: true
+        });
+    } catch (error) {
+        console.error('2FA Verify Setup Error:', error);
+        res.status(500).json({ message: error.message || '2FA সক্রিয়করণ ব্যর্থ হয়েছে' });
+    }
+});
+
+// @route   POST /api/auth/2fa/verify
+// @desc    Verify 2FA token during login
+// @access  Public (but requires temporary login token)
+router.post('/2fa/verify', [
+    body('userId').notEmpty().withMessage('ইউজার আইডি আবশ্যক'),
+    body('token').notEmpty().withMessage('টোকেন আবশ্যক')
+], async (req, res) => {
+    const deviceInfo = extractDeviceInfo(req);
+
+    try {
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+            return res.status(400).json({ errors: errors.array() });
+        }
+
+        const { userId, token, useBackupCode } = req.body;
+
+        const user = await User.findById(userId);
+
+        if (!user || !user.twoFactorAuth.isEnabled) {
+            return res.status(400).json({ message: 'অবৈধ অনুরোধ' });
+        }
+
+        let isValid = false;
+
+        if (useBackupCode) {
+            // Verify backup code
+            const { valid, codeIndex } = verifyBackupCode(token, user.twoFactorAuth.backupCodes);
+
+            if (valid) {
+                // Mark backup code as used
+                user.twoFactorAuth.backupCodes[codeIndex].used = true;
+                user.twoFactorAuth.backupCodes[codeIndex].usedAt = new Date();
+                await user.save();
+                isValid = true;
+            }
+        } else {
+            // Verify TOTP token
+            isValid = verifyToken(token, user.twoFactorAuth.secret);
+        }
+
+        if (!isValid) {
+            // Log failed 2FA attempt
+            await LoginHistory.create({
+                user: user._id,
+                email: user.email,
+                status: 'failed',
+                loginMethod: '2fa',
+                deviceInfo,
+                failureReason: 'invalid_2fa_token',
+                failureMessage: 'ভুল 2FA টোকেন'
+            });
+
+            return res.status(400).json({ message: 'ভুল টোকেন। আবার চেষ্টা করুন।' });
+        }
+
+        // Generate token pair
+        const tokens = await generateTokenPair(user._id, deviceInfo);
+
+        // Create login history
+        await LoginHistory.create({
+            user: user._id,
+            email: user.email,
+            status: 'success',
+            loginMethod: '2fa',
+            deviceInfo,
+            sessionId: tokens.tokenFamily,
+            tokenFamily: tokens.tokenFamily
+        });
+
+        res.json({
+            _id: user._id,
+            name: user.name,
+            email: user.email,
+            role: user.role,
+            permissions: user.getAllPermissions(),
+            balances: user.balances,
+            accessToken: tokens.accessToken,
+            refreshToken: tokens.refreshToken,
+            accessTokenExpiresIn: tokens.accessTokenExpiresIn,
+            refreshTokenExpiresIn: tokens.refreshTokenExpiresIn
+        });
+    } catch (error) {
+        console.error('2FA Verify Error:', error);
+        res.status(400).json({ message: error.message || '2FA যাচাই ব্যর্থ হয়েছে' });
+    }
+});
+
+// @route   POST /api/auth/2fa/disable
+// @desc    Disable 2FA
+// @access  Private
+router.post('/2fa/disable', protect, [
+    body('password').notEmpty().withMessage('পাসওয়ার্ড আবশ্যক')
+], async (req, res) => {
+    try {
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+            return res.status(400).json({ errors: errors.array() });
+        }
+
+        const { password } = req.body;
+        const user = await User.findById(req.user._id);
+
+        // Verify password
+        const isMatch = await user.matchPassword(password);
+        if (!isMatch) {
+            return res.status(400).json({ message: 'ভুল পাসওয়ার্ড' });
+        }
+
+        // Disable 2FA
+        user.twoFactorAuth.isEnabled = false;
+        user.twoFactorAuth.secret = null;
+        user.twoFactorAuth.backupCodes = [];
+        await user.save();
+
+        res.json({ message: '2FA নিষ্ক্রিয় করা হয়েছে' });
+    } catch (error) {
+        console.error('2FA Disable Error:', error);
+        res.status(500).json({ message: '2FA নিষ্ক্রিয় করতে ব্যর্থ হয়েছে' });
+    }
+});
+
+// @route   GET /api/auth/2fa/status
+// @desc    Get 2FA status for current user
+// @access  Private
+router.get('/2fa/status', protect, async (req, res) => {
+    try {
+        const user = await User.findById(req.user._id);
+
+        const unusedBackupCodes = user.twoFactorAuth.backupCodes
+            ? user.twoFactorAuth.backupCodes.filter(bc => !bc.used).length
+            : 0;
+
+        res.json({
+            isEnabled: user.twoFactorAuth.isEnabled || false,
+            method: user.twoFactorAuth.method || null,
+            enabledAt: user.twoFactorAuth.enabledAt || null,
+            backupCodesRemaining: unusedBackupCodes
+        });
+    } catch (error) {
+        console.error('2FA Status Error:', error);
+        res.status(500).json({ message: 'সার্ভার এরর' });
+    }
+});
+
+// @route   POST /api/auth/2fa/regenerate-backup-codes
+// @desc    Regenerate backup codes
+// @access  Private
+router.post('/2fa/regenerate-backup-codes', protect, [
+    body('password').notEmpty().withMessage('পাসওয়ার্ড আবশ্যক')
+], async (req, res) => {
+    try {
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+            return res.status(400).json({ errors: errors.array() });
+        }
+
+        const { password } = req.body;
+        const user = await User.findById(req.user._id);
+
+        if (!user.twoFactorAuth.isEnabled) {
+            return res.status(400).json({ message: '2FA সক্রিয় নেই' });
+        }
+
+        // Verify password
+        const isMatch = await user.matchPassword(password);
+        if (!isMatch) {
+            return res.status(400).json({ message: 'ভুল পাসওয়ার্ড' });
+        }
+
+        // Generate new backup codes
+        const backupCodes = generateBackupCodes(10);
+        user.twoFactorAuth.backupCodes = backupCodes;
+        await user.save();
+
+        res.json({
+            message: 'নতুন ব্যাকআপ কোড তৈরি হয়েছে',
+            backupCodes: formatBackupCodesForDisplay(backupCodes)
+        });
+    } catch (error) {
+        console.error('Regenerate Backup Codes Error:', error);
+        res.status(500).json({ message: 'ব্যাকআপ কোড তৈরি করতে ব্যর্থ হয়েছে' });
     }
 });
 

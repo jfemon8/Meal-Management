@@ -9,12 +9,16 @@ import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
 import { Label } from '../../components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../components/ui/card';
+import TwoFactorVerify from '../../components/Auth/TwoFactorVerify';
+import api from '../../services/api';
 
 const Login: React.FC = () => {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [showPassword, setShowPassword] = useState(false);
     const [loading, setLoading] = useState(false);
+    const [requires2FA, setRequires2FA] = useState(false);
+    const [userId, setUserId] = useState('');
     const { login } = useAuth() as any;
     const { theme, toggleTheme } = useTheme();
     const navigate = useNavigate();
@@ -29,6 +33,21 @@ const Login: React.FC = () => {
 
         setLoading(true);
         try {
+            const response = await api.post('/auth/login', { email, password });
+
+            // Check if 2FA is required
+            if (response.data.requires2FA) {
+                setUserId(response.data.userId);
+                setRequires2FA(true);
+                toast(response.data.message || '2FA কোড প্রবেশ করুন', {
+                    icon: '🔐',
+                    duration: 3000
+                });
+                setLoading(false);
+                return;
+            }
+
+            // Normal login (no 2FA)
             await login(email, password);
             toast.success('সফলভাবে লগইন হয়েছে');
             navigate('/dashboard');
@@ -38,6 +57,30 @@ const Login: React.FC = () => {
             setLoading(false);
         }
     };
+
+    const handle2FASuccess = async (userData: any) => {
+        // Save user data to context
+        localStorage.setItem('user', JSON.stringify(userData));
+        toast.success('সফলভাবে লগইন হয়েছে');
+        window.location.href = '/dashboard';
+    };
+
+    const handle2FACancel = () => {
+        setRequires2FA(false);
+        setUserId('');
+        setPassword('');
+    };
+
+    // Show 2FA verification screen if required
+    if (requires2FA && userId) {
+        return (
+            <TwoFactorVerify
+                userId={userId}
+                onSuccess={handle2FASuccess}
+                onCancel={handle2FACancel}
+            />
+        );
+    }
 
     return (
         <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary-50 via-primary-100 to-primary-200 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 px-4 transition-all duration-500 relative overflow-hidden">

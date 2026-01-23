@@ -21,7 +21,8 @@
       "Bash(grep:*)",
       "Bash(del AuthContext.js)",
       "Bash(tasklist:*)",
-      "Bash(npm run server:*)"
+      "Bash(npm run server:*)",
+      "Bash(timeout 2 tail:*)"
     ]
   }
 }

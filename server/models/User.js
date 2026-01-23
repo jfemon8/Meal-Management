@@ -57,6 +57,31 @@ const userSchema = new mongoose.Schema({
         type: String,
         default: ''
     },
+    // Two-Factor Authentication (2FA)
+    twoFactorAuth: {
+        isEnabled: {
+            type: Boolean,
+            default: false
+        },
+        secret: {
+            type: String,
+            default: null
+        },
+        backupCodes: [{
+            code: String,
+            used: {
+                type: Boolean,
+                default: false
+            },
+            usedAt: Date
+        }],
+        enabledAt: Date,
+        method: {
+            type: String,
+            enum: ['totp', 'sms', 'email'],
+            default: 'totp'
+        }
+    },
     createdAt: {
         type: Date,
         default: Date.now
