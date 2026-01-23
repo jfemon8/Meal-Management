@@ -17,6 +17,97 @@ const defaultHolidays2026 = [
     { date: '2026-12-25', name: 'Christmas Day', nameBn: 'বড়দিন', type: 'government' }
 ];
 
+// @route   GET /api/holidays/upcoming
+// @desc    Get upcoming OFF days (Fridays + Holidays) for next 30 days
+// @access  Private
+router.get('/upcoming', protect, async (req, res) => {
+    try {
+        const days = parseInt(req.query.days) || 30;
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        const endDate = new Date(today);
+        endDate.setDate(endDate.getDate() + days);
+
+        // Get holidays in the date range
+        const holidays = await Holiday.find({
+            isActive: true,
+            date: { $gte: today, $lte: endDate }
+        }).sort({ date: 1 });
+
+        // Generate list of Fridays in the date range
+        const offDays = [];
+        const currentDate = new Date(today);
+
+        while (currentDate <= endDate) {
+            const dayOfWeek = currentDate.getDay();
+            const dateStr = currentDate.toISOString().split('T')[0];
+
+            // Check if it's Friday (5)
+            if (dayOfWeek === 5) {
+                offDays.push({
+                    date: dateStr,
+                    type: 'friday',
+                    reason: 'শুক্রবার',
+                    reasonEn: 'Friday'
+                });
+            }
+
+            // Check if it's an odd Saturday (2nd or 4th Saturday of month)
+            if (dayOfWeek === 6) {
+                const dayOfMonth = currentDate.getDate();
+                const firstDayOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
+                const firstSaturday = (6 - firstDayOfMonth.getDay() + 7) % 7 + 1;
+                const saturdayNumber = Math.ceil((dayOfMonth - firstSaturday + 7) / 7);
+
+                if (saturdayNumber === 2 || saturdayNumber === 4) {
+                    offDays.push({
+                        date: dateStr,
+                        type: 'saturday',
+                        reason: `${saturdayNumber === 2 ? '২য়' : '৪র্থ'} শনিবার`,
+                        reasonEn: `${saturdayNumber}${saturdayNumber === 2 ? 'nd' : 'th'} Saturday`
+                    });
+                }
+            }
+
+            currentDate.setDate(currentDate.getDate() + 1);
+        }
+
+        // Add holidays to the list
+        holidays.forEach(holiday => {
+            const dateStr = holiday.date.toISOString().split('T')[0];
+            // Check if this date is not already in offDays
+            const existingIdx = offDays.findIndex(d => d.date === dateStr);
+            if (existingIdx === -1) {
+                offDays.push({
+                    date: dateStr,
+                    type: 'holiday',
+                    reason: holiday.nameBn,
+                    reasonEn: holiday.name,
+                    holidayType: holiday.type
+                });
+            } else {
+                // If already a Friday/Saturday, append holiday info
+                offDays[existingIdx].isAlsoHoliday = true;
+                offDays[existingIdx].holidayName = holiday.nameBn;
+                offDays[existingIdx].holidayNameEn = holiday.name;
+            }
+        });
+
+        // Sort by date
+        offDays.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+
+        res.json({
+            days,
+            count: offDays.length,
+            offDays
+        });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'সার্ভার এরর' });
+    }
+});
+
 // @route   GET /api/holidays
 // @desc    Get holidays for a year/month
 // @access  Private

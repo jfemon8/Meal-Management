@@ -1,8 +1,8 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useMealSummary } from '../../hooks/queries/useMeals';
 import { useCurrentMonthSettings } from '../../hooks/queries/useMonthSettings';
-import { FiCalendar, FiTrendingUp, FiUsers } from 'react-icons/fi';
+import { FiCalendar, FiTrendingUp, FiUsers, FiAlertCircle } from 'react-icons/fi';
 import { format } from 'date-fns';
 import { bn } from 'date-fns/locale';
 import BDTIcon from '../../components/Icons/BDTIcon';
@@ -10,6 +10,17 @@ import { Skeleton } from '../../components/ui/skeleton';
 import { Link } from 'react-router-dom';
 import { PERMISSIONS, RequirePermission } from '../../utils/permissions';
 import LowBalanceWarning from '../../components/Wallet/LowBalanceWarning';
+import api from '../../services/api';
+
+interface UpcomingOffDay {
+    date: string;
+    type: 'friday' | 'saturday' | 'holiday';
+    reason: string;
+    reasonEn: string;
+    isAlsoHoliday?: boolean;
+    holidayName?: string;
+    holidayType?: string;
+}
 
 interface StatCardProps {
     icon: React.ComponentType<{ className?: string }>;
@@ -36,6 +47,8 @@ const StatCard: React.FC<StatCardProps> = ({ icon: Icon, title, value, subtitle,
 
 const Dashboard: React.FC = () => {
     const { user } = useAuth();
+    const [upcomingOffDays, setUpcomingOffDays] = useState<UpcomingOffDay[]>([]);
+    const [offDaysLoading, setOffDaysLoading] = useState(true);
 
     const today = new Date();
     const year = today.getFullYear();
@@ -45,6 +58,21 @@ const Dashboard: React.FC = () => {
     const { data: monthSettings, isLoading: monthSettingsLoading } = useCurrentMonthSettings();
 
     const isLoading = mealSummaryLoading || monthSettingsLoading;
+
+    // Fetch upcoming OFF days
+    useEffect(() => {
+        const fetchUpcomingOffDays = async () => {
+            try {
+                const response = await api.get('/holidays/upcoming', { params: { days: 14 } });
+                setUpcomingOffDays(response.data.offDays || []);
+            } catch (error) {
+                console.error('Failed to fetch upcoming off days:', error);
+            } finally {
+                setOffDaysLoading(false);
+            }
+        };
+        fetchUpcomingOffDays();
+    }, []);
 
     return (
         <div className="space-y-6">
@@ -175,6 +203,64 @@ const Dashboard: React.FC = () => {
                     </div>
                 </div>
             ) : null}
+
+            {/* Upcoming OFF Days */}
+            <div className="card">
+                <h2 className="text-lg font-semibold mb-4 flex items-center gap-2 text-gray-800 dark:text-gray-100">
+                    <FiAlertCircle className="text-red-500" />
+                    আগামী ছুটির দিন
+                </h2>
+                {offDaysLoading ? (
+                    <div className="space-y-2">
+                        {[1, 2, 3].map((i) => (
+                            <Skeleton key={i} className="h-12 w-full" />
+                        ))}
+                    </div>
+                ) : upcomingOffDays.length === 0 ? (
+                    <p className="text-gray-500 dark:text-gray-400 text-center py-4">
+                        আগামী ১৪ দিনে কোনো ছুটি নেই
+                    </p>
+                ) : (
+                    <div className="space-y-2">
+                        {upcomingOffDays.slice(0, 5).map((day, idx) => (
+                            <div
+                                key={idx}
+                                className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-lg"
+                            >
+                                <div className="flex items-center gap-3">
+                                    <div className={`w-2 h-2 rounded-full ${
+                                        day.type === 'friday' ? 'bg-red-500' :
+                                        day.type === 'saturday' ? 'bg-orange-500' :
+                                        'bg-purple-500'
+                                    }`} />
+                                    <div>
+                                        <p className="font-medium text-gray-800 dark:text-gray-200">
+                                            {format(new Date(day.date), 'EEEE, dd MMMM', { locale: bn })}
+                                        </p>
+                                        <p className="text-sm text-gray-500 dark:text-gray-400">
+                                            {day.reason}
+                                            {day.isAlsoHoliday && ` + ${day.holidayName}`}
+                                        </p>
+                                    </div>
+                                </div>
+                                <span className={`px-2 py-1 text-xs rounded-full ${
+                                    day.type === 'friday' ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' :
+                                    day.type === 'saturday' ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400' :
+                                    'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400'
+                                }`}>
+                                    {day.type === 'friday' ? 'শুক্রবার' :
+                                     day.type === 'saturday' ? 'শনিবার' : 'ছুটি'}
+                                </span>
+                            </div>
+                        ))}
+                        {upcomingOffDays.length > 5 && (
+                            <p className="text-center text-sm text-gray-500 dark:text-gray-400 pt-2">
+                                +{upcomingOffDays.length - 5} আরো ছুটি
+                            </p>
+                        )}
+                    </div>
+                )}
+            </div>
 
             {/* Quick Links - Permission-Based */}
             <RequirePermission
