@@ -53,19 +53,22 @@ router.get('/upcoming', protect, async (req, res) => {
                 });
             }
 
-            // Check if it's an odd Saturday (2nd or 4th Saturday of month)
+            // Check if it's an odd Saturday (1st, 3rd, or 5th Saturday of month)
             if (dayOfWeek === 6) {
                 const dayOfMonth = currentDate.getDate();
                 const firstDayOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
                 const firstSaturday = (6 - firstDayOfMonth.getDay() + 7) % 7 + 1;
                 const saturdayNumber = Math.ceil((dayOfMonth - firstSaturday + 7) / 7);
 
-                if (saturdayNumber === 2 || saturdayNumber === 4) {
+                // Odd Saturdays (1st, 3rd, 5th) are OFF in Bangladesh
+                if (saturdayNumber === 1 || saturdayNumber === 3 || saturdayNumber === 5) {
+                    const saturdayLabel = saturdayNumber === 1 ? '১ম' : saturdayNumber === 3 ? '৩য়' : '৫ম';
+                    const saturdaySuffix = saturdayNumber === 1 ? 'st' : saturdayNumber === 3 ? 'rd' : 'th';
                     offDays.push({
                         date: dateStr,
                         type: 'saturday',
-                        reason: `${saturdayNumber === 2 ? '২য়' : '৪র্থ'} শনিবার`,
-                        reasonEn: `${saturdayNumber}${saturdayNumber === 2 ? 'nd' : 'th'} Saturday`
+                        reason: `বিজোড় শনিবার (${saturdayLabel})`,
+                        reasonEn: `Odd Saturday (${saturdayNumber}${saturdaySuffix})`
                     });
                 }
             }

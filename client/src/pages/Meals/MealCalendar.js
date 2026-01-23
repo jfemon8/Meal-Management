@@ -320,15 +320,35 @@ const MealCalendar = () => {
                     </button>
                 </div>
 
-                {/* Month Settings Info */}
-                {monthSettings && (
-                    <div className="mb-4 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg text-sm">
-                        <p className="text-gray-700 dark:text-gray-300">
-                            {mealType === 'lunch' ? 'দুপুরের খাবার' : 'রাতের খাবার'} রেট: {' '}
-                            <span className="font-medium text-primary-600 dark:text-primary-400">৳{currentRate}</span>
+                {/* Month Stats */}
+                <div className="mb-4 grid grid-cols-2 md:grid-cols-4 gap-3">
+                    <div className="p-3 bg-green-50 dark:bg-green-900/20 rounded-lg text-center">
+                        <p className="text-2xl font-bold text-green-600 dark:text-green-400">
+                            {mealStatus.filter(s => s.isOn).length}
+                        </p>
+                        <p className="text-xs text-gray-600 dark:text-gray-400">মিল অন</p>
+                    </div>
+                    <div className="p-3 bg-red-50 dark:bg-red-900/20 rounded-lg text-center">
+                        <p className="text-2xl font-bold text-red-600 dark:text-red-400">
+                            {mealStatus.filter(s => !s.isOn).length}
+                        </p>
+                        <p className="text-xs text-gray-600 dark:text-gray-400">মিল অফ</p>
+                    </div>
+                    <div className="p-3 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg text-center">
+                        <p className="text-2xl font-bold text-yellow-600 dark:text-yellow-400">
+                            {holidays.length}
+                        </p>
+                        <p className="text-xs text-gray-600 dark:text-gray-400">সরকারি ছুটি</p>
+                    </div>
+                    <div className="p-3 bg-primary-50 dark:bg-primary-900/20 rounded-lg text-center">
+                        <p className="text-2xl font-bold text-primary-600 dark:text-primary-400">
+                            ৳{currentRate}
+                        </p>
+                        <p className="text-xs text-gray-600 dark:text-gray-400">
+                            {mealType === 'lunch' ? 'দুপুর' : 'রাত'} রেট
                         </p>
                     </div>
-                )}
+                </div>
 
                 {/* Calendar Grid */}
                 <div className="grid grid-cols-7 gap-1 mb-2">
@@ -352,6 +372,7 @@ const MealCalendar = () => {
                         const holiday = isHoliday(day);
                         const oddSat = isOddSaturday(day);
                         const friday = isFriday(day);
+                        const isAutoOff = holiday || friday || oddSat; // Auto OFF days
                         const isUpdatingThis = updating === format(day, 'yyyy-MM-dd');
                         const canToggleThis = canToggle(day);
                         const today = new Date();
@@ -359,14 +380,24 @@ const MealCalendar = () => {
                         const isPast = day < today && !isToday;
                         const lockReason = !isManager ? getLockReason(day) : null;
 
+                        // Determine cell style based on status
+                        const getCellStyle = () => {
+                            if (isAutoOff && !isOn) {
+                                // Grey for auto-OFF (holiday/Friday/odd Saturday)
+                                return 'bg-gray-200 dark:bg-gray-700 border-gray-300 dark:border-gray-600';
+                            } else if (isOn) {
+                                return 'bg-green-100 dark:bg-green-900/30 border-green-300 dark:border-green-700 hover:bg-green-200 dark:hover:bg-green-900/50';
+                            } else {
+                                return 'bg-red-100 dark:bg-red-900/30 border-red-300 dark:border-red-700 hover:bg-red-200 dark:hover:bg-red-900/50';
+                            }
+                        };
+
                         return (
                             <button
                                 key={day.toISOString()}
                                 onClick={() => canToggleThis && handleToggleMeal(format(day, 'yyyy-MM-dd'), isOn)}
                                 disabled={!canToggleThis || isUpdatingThis}
-                                className={`aspect-square p-1 rounded-lg border-2 transition-all relative ${isOn
-                                        ? 'bg-green-100 dark:bg-green-900/30 border-green-300 dark:border-green-700 hover:bg-green-200 dark:hover:bg-green-900/50'
-                                        : 'bg-red-100 dark:bg-red-900/30 border-red-300 dark:border-red-700 hover:bg-red-200 dark:hover:bg-red-900/50'
+                                className={`aspect-square p-1 rounded-lg border-2 transition-all relative ${getCellStyle()
                                     } ${holiday ? 'ring-2 ring-yellow-400' : ''
                                     } ${!canToggleThis ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer'
                                     } ${isToday ? 'ring-2 ring-primary-500 ring-offset-2 dark:ring-offset-gray-800' : ''
@@ -416,7 +447,11 @@ const MealCalendar = () => {
                         <span className="dark:text-gray-300">মিল অফ</span>
                     </div>
                     <div className="flex items-center gap-2">
-                        <div className="w-4 h-4 bg-gray-100 dark:bg-gray-700 ring-2 ring-yellow-400 rounded" />
+                        <div className="w-4 h-4 bg-gray-200 dark:bg-gray-700 border-2 border-gray-300 dark:border-gray-600 rounded" />
+                        <span className="dark:text-gray-300">অটো অফ (শুক্র/বিজোড় শনি)</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <div className="w-4 h-4 bg-gray-200 dark:bg-gray-700 ring-2 ring-yellow-400 rounded" />
                         <span className="dark:text-gray-300">সরকারি ছুটি</span>
                     </div>
                     <div className="flex items-center gap-2">
@@ -425,7 +460,7 @@ const MealCalendar = () => {
                     </div>
                     <div className="flex items-center gap-2">
                         <FiLock className="w-4 h-4 text-gray-500" />
-                        <span className="dark:text-gray-300">লক (পরিবর্তন অযোগ্য)</span>
+                        <span className="dark:text-gray-300">লক (অতীত/আজ)</span>
                     </div>
                 </div>
             </div>
