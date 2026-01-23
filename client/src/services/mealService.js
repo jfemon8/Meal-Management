@@ -35,6 +35,24 @@ export const mealService = {
     getDailyMeals: async (date, mealType = 'lunch') => {
         const response = await api.get('/meals/daily', { params: { date, mealType } });
         return response.data;
+    },
+
+    // Bulk toggle meals for date range
+    bulkToggle: async (startDate, endDate, isOn, mealType = 'lunch') => {
+        const response = await api.put('/meals/bulk-toggle', { startDate, endDate, isOn, mealType });
+        return response.data;
+    },
+
+    // Get meal audit log
+    getAuditLog: async (params = {}) => {
+        const response = await api.get('/meals/audit-log', { params });
+        return response.data;
+    },
+
+    // Get audit log for specific user (Manager+)
+    getUserAuditLog: async (userId, params = {}) => {
+        const response = await api.get(`/meals/audit-log/${userId}`, { params });
+        return response.data;
     }
 };
 

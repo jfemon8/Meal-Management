@@ -14,6 +14,7 @@ import Register from './pages/Auth/Register';
 const Dashboard = lazy(() => import('./pages/Dashboard/Dashboard'));
 const Profile = lazy(() => import('./pages/Profile/Profile'));
 const MealCalendar = lazy(() => import('./pages/Meals/MealCalendar'));
+const MealAuditLog = lazy(() => import('./pages/Meals/MealAuditLog'));
 const Transactions = lazy(() => import('./pages/Transactions/Transactions'));
 const MonthlyReport = lazy(() => import('./pages/Reports/MonthlyReport'));
 const Wallet = lazy(() => import('./pages/Wallet/Wallet'));
@@ -63,6 +64,7 @@ function App() {
                     <Route path="wallet" element={<Wallet />} />
                     <Route path="settings" element={<Settings />} />
                     <Route path="meals" element={<MealCalendar />} />
+                    <Route path="meals/history" element={<MealAuditLog />} />
                     <Route path="transactions" element={<Transactions />} />
                     <Route path="reports/monthly" element={<MonthlyReport />} />
 

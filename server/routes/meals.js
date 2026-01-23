@@ -15,6 +15,7 @@ const {
     formatDate,
     getDatesBetween
 } = require('../utils/dateUtils');
+const MealAuditLog = require('../models/MealAuditLog');
 
 // @route   GET /api/meals/status
 // @desc    Get meal status for a date range
@@ -160,9 +161,117 @@ router.put('/toggle', protect, [
         );
 
         const mealTypeBn = mealType === 'lunch' ? 'দুপুরের খাবার' : 'রাতের খাবার';
+
+        // Create audit log
+        await MealAuditLog.create({
+            user: targetUserId,
+            date: mealDate,
+            mealType,
+            action: isOn ? 'toggle_on' : 'toggle_off',
+            previousState: { isOn: !isOn, count: isOn ? 0 : 1 },
+            newState: { isOn, count: isOn ? (count || 1) : 0 },
+            changedBy: req.user._id,
+            changedByRole: req.user.role,
+            ipAddress: req.ip || req.connection?.remoteAddress || ''
+        });
+
         res.json({
             message: isOn ? `${mealTypeBn} অন করা হয়েছে` : `${mealTypeBn} অফ করা হয়েছে`,
             meal
+        });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'সার্ভার এরর' });
+    }
+});
+
+// @route   PUT /api/meals/bulk-toggle
+// @desc    Bulk toggle meals on/off for a date range
+// @access  Private
+router.put('/bulk-toggle', protect, [
+    body('startDate').notEmpty().withMessage('শুরুর তারিখ আবশ্যক'),
+    body('endDate').notEmpty().withMessage('শেষ তারিখ আবশ্যক'),
+    body('isOn').isBoolean().withMessage('isOn বুলিয়ান হতে হবে'),
+    body('mealType').optional().isIn(['lunch', 'dinner']).withMessage('মিল টাইপ অবৈধ')
+], async (req, res) => {
+    try {
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+            return res.status(400).json({ errors: errors.array() });
+        }
+
+        const { startDate, endDate, isOn, mealType = 'lunch' } = req.body;
+        const start = new Date(startDate);
+        const end = new Date(endDate);
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        // Validate date range
+        if (start > end) {
+            return res.status(400).json({ message: 'শুরুর তারিখ শেষ তারিখের আগে হতে হবে' });
+        }
+
+        // Maximum 31 days range
+        const daysDiff = Math.ceil((end - start) / (1000 * 60 * 60 * 24)) + 1;
+        if (daysDiff > 31) {
+            return res.status(400).json({ message: 'সর্বোচ্চ ৩১ দিনের রেঞ্জ সিলেক্ট করতে পারবেন' });
+        }
+
+        const isManagerRole = ['manager', 'admin', 'superadmin'].includes(req.user.role);
+
+        // Users can only change future dates
+        if (!isManagerRole && start <= today) {
+            return res.status(400).json({
+                message: 'আপনি শুধুমাত্র ভবিষ্যতের মিল অন/অফ করতে পারবেন'
+            });
+        }
+
+        // Get dates in range
+        const dates = getDatesBetween(start, end);
+        const futureDates = isManagerRole ? dates : dates.filter(d => d > today);
+
+        if (futureDates.length === 0) {
+            return res.status(400).json({ message: 'কোনো পরিবর্তনযোগ্য তারিখ নেই' });
+        }
+
+        // Bulk update meals
+        const bulkOps = futureDates.map(date => ({
+            updateOne: {
+                filter: { user: req.user._id, date, mealType },
+                update: {
+                    isOn,
+                    count: isOn ? 1 : 0,
+                    modifiedBy: req.user._id,
+                    isManuallySet: true
+                },
+                upsert: true
+            }
+        }));
+
+        await Meal.bulkWrite(bulkOps);
+
+        // Create audit logs for bulk operation
+        const auditLogs = futureDates.map(date => ({
+            user: req.user._id,
+            date,
+            mealType,
+            action: isOn ? 'bulk_on' : 'bulk_off',
+            previousState: { isOn: !isOn, count: isOn ? 0 : 1 },
+            newState: { isOn, count: isOn ? 1 : 0 },
+            changedBy: req.user._id,
+            changedByRole: req.user.role,
+            notes: `Bulk ${isOn ? 'ON' : 'OFF'}: ${formatDate(start)} - ${formatDate(end)}`,
+            ipAddress: req.ip || req.connection?.remoteAddress || ''
+        }));
+
+        await MealAuditLog.insertMany(auditLogs);
+
+        const mealTypeBn = mealType === 'lunch' ? 'দুপুরের খাবার' : 'রাতের খাবার';
+        res.json({
+            message: `${futureDates.length}টি দিনের ${mealTypeBn} ${isOn ? 'অন' : 'অফ'} করা হয়েছে`,
+            updatedCount: futureDates.length,
+            startDate: formatDate(start),
+            endDate: formatDate(end)
         });
     } catch (error) {
         console.error(error);
@@ -362,6 +471,96 @@ router.get('/daily', protect, isManager, async (req, res) => {
             totalMealCount,
             meals: dailyMeals
         });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'সার্ভার এরর' });
+    }
+});
+
+// @route   GET /api/meals/audit-log
+// @desc    Get meal change audit log
+// @access  Private (Users see own, Manager+ sees all)
+router.get('/audit-log', protect, async (req, res) => {
+    try {
+        const { userId, startDate, endDate, mealType, limit = 50, page = 1 } = req.query;
+        const isManagerRole = ['manager', 'admin', 'superadmin'].includes(req.user.role);
+
+        const query = {};
+
+        // Users can only see their own audit log
+        if (userId && isManagerRole) {
+            query.user = userId;
+        } else if (!isManagerRole) {
+            query.user = req.user._id;
+        }
+
+        // Date range filter
+        if (startDate && endDate) {
+            query.date = {
+                $gte: new Date(startDate),
+                $lte: new Date(endDate)
+            };
+        }
+
+        // Meal type filter
+        if (mealType && ['lunch', 'dinner'].includes(mealType)) {
+            query.mealType = mealType;
+        }
+
+        const skip = (parseInt(page) - 1) * parseInt(limit);
+
+        const [logs, total] = await Promise.all([
+            MealAuditLog.find(query)
+                .populate('user', 'name email')
+                .populate('changedBy', 'name email role')
+                .sort({ createdAt: -1 })
+                .skip(skip)
+                .limit(parseInt(limit)),
+            MealAuditLog.countDocuments(query)
+        ]);
+
+        res.json({
+            logs,
+            pagination: {
+                total,
+                page: parseInt(page),
+                limit: parseInt(limit),
+                totalPages: Math.ceil(total / parseInt(limit))
+            }
+        });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'সার্ভার এরর' });
+    }
+});
+
+// @route   GET /api/meals/audit-log/:userId
+// @desc    Get audit log for a specific user (Manager+ only)
+// @access  Private (Manager+)
+router.get('/audit-log/:userId', protect, isManager, async (req, res) => {
+    try {
+        const { startDate, endDate, mealType, limit = 50 } = req.query;
+
+        const query = { user: req.params.userId };
+
+        if (startDate && endDate) {
+            query.date = {
+                $gte: new Date(startDate),
+                $lte: new Date(endDate)
+            };
+        }
+
+        if (mealType && ['lunch', 'dinner'].includes(mealType)) {
+            query.mealType = mealType;
+        }
+
+        const logs = await MealAuditLog.find(query)
+            .populate('user', 'name email')
+            .populate('changedBy', 'name email role')
+            .sort({ createdAt: -1 })
+            .limit(parseInt(limit));
+
+        res.json(logs);
     } catch (error) {
         console.error(error);
         res.status(500).json({ message: 'সার্ভার এরর' });
