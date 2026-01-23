@@ -1,19 +1,115 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { FiDownload, FiClock, FiTrendingUp, FiTrendingDown, FiDollarSign } from 'react-icons/fi';
-import { format } from 'date-fns';
+import { format, subDays } from 'date-fns';
+import { bn } from 'date-fns/locale';
 import api from '../../services/api';
 import toast from 'react-hot-toast';
 import LowBalanceWarning from '../../components/Wallet/LowBalanceWarning';
+import {
+    LineChart,
+    Line,
+    XAxis,
+    YAxis,
+    CartesianGrid,
+    Tooltip,
+    Legend,
+    ResponsiveContainer
+} from 'recharts';
+
+interface ChartDataPoint {
+    date: string;
+    breakfast: number;
+    lunch: number;
+    dinner: number;
+}
+
+interface Transaction {
+    _id: string;
+    balanceType: 'breakfast' | 'lunch' | 'dinner';
+    newBalance: number;
+    createdAt: string;
+}
 
 const Wallet: React.FC = () => {
     const { user } = useAuth();
     const [downloading, setDownloading] = useState(false);
+    const [chartData, setChartData] = useState<ChartDataPoint[]>([]);
+    const [chartLoading, setChartLoading] = useState(true);
     const [dateRange, setDateRange] = useState({
         startDate: '',
         endDate: '',
         balanceType: ''
     });
+
+    // Fetch balance trend data
+    useEffect(() => {
+        const fetchBalanceTrend = async () => {
+            try {
+                const endDate = new Date();
+                const startDate = subDays(endDate, 30);
+
+                const response = await api.get('/transactions', {
+                    params: {
+                        startDate: format(startDate, 'yyyy-MM-dd'),
+                        endDate: format(endDate, 'yyyy-MM-dd'),
+                        limit: 100
+                    }
+                });
+
+                const transactions: Transaction[] = response.data.transactions || [];
+
+                // Group transactions by date and get latest balance for each type
+                const dateMap = new Map<string, ChartDataPoint>();
+
+                // Initialize with current balances
+                const today = format(new Date(), 'yyyy-MM-dd');
+                dateMap.set(today, {
+                    date: today,
+                    breakfast: user?.balances?.breakfast?.amount || 0,
+                    lunch: user?.balances?.lunch?.amount || 0,
+                    dinner: user?.balances?.dinner?.amount || 0
+                });
+
+                // Process transactions (oldest first for accurate trend)
+                const sortedTx = [...transactions].sort(
+                    (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+                );
+
+                sortedTx.forEach((tx) => {
+                    const dateStr = format(new Date(tx.createdAt), 'yyyy-MM-dd');
+                    if (!dateMap.has(dateStr)) {
+                        dateMap.set(dateStr, {
+                            date: dateStr,
+                            breakfast: 0,
+                            lunch: 0,
+                            dinner: 0
+                        });
+                    }
+                    const point = dateMap.get(dateStr)!;
+                    point[tx.balanceType] = tx.newBalance;
+                });
+
+                // Convert to array and sort by date
+                const chartArr = Array.from(dateMap.values())
+                    .sort((a, b) => a.date.localeCompare(b.date))
+                    .map((point) => ({
+                        ...point,
+                        date: format(new Date(point.date), 'dd MMM', { locale: bn })
+                    }));
+
+                setChartData(chartArr);
+            } catch (error) {
+                console.error('Failed to fetch balance trend:', error);
+            } finally {
+                setChartLoading(false);
+            }
+        };
+
+        if (user) {
+            fetchBalanceTrend();
+        }
+    }, [user]);
 
     const downloadPDFStatement = async () => {
         setDownloading(true);
@@ -175,6 +271,78 @@ const Wallet: React.FC = () => {
                         </div>
                     )}
                 </div>
+            </div>
+
+            {/* Balance Trend Chart */}
+            <div className="card">
+                <h2 className="text-lg font-semibold mb-4 flex items-center gap-2 text-gray-800 dark:text-gray-100">
+                    <FiTrendingUp className="text-primary-600" />
+                    ব্যালেন্স ট্রেন্ড (গত ৩০ দিন)
+                </h2>
+                {chartLoading ? (
+                    <div className="flex items-center justify-center h-64">
+                        <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary-600"></div>
+                    </div>
+                ) : chartData.length === 0 ? (
+                    <p className="text-gray-500 dark:text-gray-400 text-center py-8">
+                        কোনো লেনদেন পাওয়া যায়নি
+                    </p>
+                ) : (
+                    <div className="h-64">
+                        <ResponsiveContainer width="100%" height="100%">
+                            <LineChart data={chartData}>
+                                <CartesianGrid strokeDasharray="3 3" stroke="#374151" opacity={0.3} />
+                                <XAxis
+                                    dataKey="date"
+                                    stroke="#9CA3AF"
+                                    fontSize={12}
+                                />
+                                <YAxis
+                                    stroke="#9CA3AF"
+                                    fontSize={12}
+                                    tickFormatter={(value) => `৳${value}`}
+                                />
+                                <Tooltip
+                                    contentStyle={{
+                                        backgroundColor: '#1F2937',
+                                        border: 'none',
+                                        borderRadius: '8px',
+                                        color: '#F9FAFB'
+                                    }}
+                                    formatter={(value: number) => [`৳${value.toFixed(2)}`, '']}
+                                />
+                                <Legend />
+                                <Line
+                                    type="monotone"
+                                    dataKey="breakfast"
+                                    name="নাস্তা"
+                                    stroke="#3B82F6"
+                                    strokeWidth={2}
+                                    dot={false}
+                                    activeDot={{ r: 4 }}
+                                />
+                                <Line
+                                    type="monotone"
+                                    dataKey="lunch"
+                                    name="দুপুর"
+                                    stroke="#10B981"
+                                    strokeWidth={2}
+                                    dot={false}
+                                    activeDot={{ r: 4 }}
+                                />
+                                <Line
+                                    type="monotone"
+                                    dataKey="dinner"
+                                    name="রাত"
+                                    stroke="#8B5CF6"
+                                    strokeWidth={2}
+                                    dot={false}
+                                    activeDot={{ r: 4 }}
+                                />
+                            </LineChart>
+                        </ResponsiveContainer>
+                    </div>
+                )}
             </div>
 
             {/* Download Statement */}

@@ -11,6 +11,8 @@ const Transactions = () => {
     const [loading, setLoading] = useState(true);
     const [filter, setFilter] = useState({
         balanceType: '',
+        startDate: '',
+        endDate: '',
         page: 1
     });
 
@@ -23,6 +25,8 @@ const Transactions = () => {
         try {
             const response = await transactionService.getTransactions({
                 balanceType: filter.balanceType || undefined,
+                startDate: filter.startDate || undefined,
+                endDate: filter.endDate || undefined,
                 page: filter.page,
                 limit: 20
             });
@@ -72,18 +76,47 @@ const Transactions = () => {
 
             {/* Filter */}
             <div className="card">
-                <div className="flex items-center gap-4">
+                <div className="flex flex-wrap items-center gap-4">
                     <FiFilter className="text-gray-400" />
-                    <select
-                        value={filter.balanceType}
-                        onChange={(e) => setFilter({ ...filter, balanceType: e.target.value, page: 1 })}
-                        className="input max-w-xs"
-                    >
-                        <option value="">সব ধরনের</option>
-                        <option value="breakfast">নাস্তা</option>
-                        <option value="lunch">দুপুর</option>
-                        <option value="dinner">রাত</option>
-                    </select>
+                    <div>
+                        <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">ব্যালেন্স টাইপ</label>
+                        <select
+                            value={filter.balanceType}
+                            onChange={(e) => setFilter({ ...filter, balanceType: e.target.value, page: 1 })}
+                            className="input"
+                        >
+                            <option value="">সব ধরনের</option>
+                            <option value="breakfast">নাস্তা</option>
+                            <option value="lunch">দুপুর</option>
+                            <option value="dinner">রাত</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">শুরুর তারিখ</label>
+                        <input
+                            type="date"
+                            value={filter.startDate}
+                            onChange={(e) => setFilter({ ...filter, startDate: e.target.value, page: 1 })}
+                            className="input"
+                        />
+                    </div>
+                    <div>
+                        <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">শেষের তারিখ</label>
+                        <input
+                            type="date"
+                            value={filter.endDate}
+                            onChange={(e) => setFilter({ ...filter, endDate: e.target.value, page: 1 })}
+                            className="input"
+                        />
+                    </div>
+                    {(filter.balanceType || filter.startDate || filter.endDate) && (
+                        <button
+                            onClick={() => setFilter({ balanceType: '', startDate: '', endDate: '', page: 1 })}
+                            className="btn btn-outline text-sm mt-4"
+                        >
+                            ফিল্টার রিসেট
+                        </button>
+                    )}
                 </div>
             </div>
 
