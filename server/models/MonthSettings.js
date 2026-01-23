@@ -39,6 +39,20 @@ const monthSettingsSchema = new mongoose.Schema({
         type: Boolean,
         default: false
     },
+    // Carry forward status
+    isCarriedForward: {
+        type: Boolean,
+        default: false
+    },
+    carriedForwardAt: {
+        type: Date,
+        default: null
+    },
+    carriedForwardBy: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User',
+        default: null
+    },
     // Who created/modified this setting
     createdBy: {
         type: mongoose.Schema.Types.ObjectId,

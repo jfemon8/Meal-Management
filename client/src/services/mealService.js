@@ -182,6 +182,12 @@ export const monthSettingsService = {
     finalizeMonth: async (id) => {
         const response = await api.put(`/month-settings/${id}/finalize`);
         return response.data;
+    },
+
+    // Carry forward balance to next month (Manager+)
+    carryForwardBalance: async (id) => {
+        const response = await api.post(`/month-settings/${id}/carry-forward`);
+        return response.data;
     }
 };
 

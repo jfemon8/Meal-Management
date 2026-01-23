@@ -174,6 +174,16 @@ router.get('/monthly', protect, async (req, res) => {
         const lunchTotalCharge = lunchMealsCount * (monthSettings.lunchRate || 0);
         const dinnerTotalCharge = dinnerMealsCount * (monthSettings.dinnerRate || 0);
 
+        // Calculate Due/Advance for each balance type
+        const currentLunchBalance = user.balances.lunch.amount;
+        const currentDinnerBalance = user.balances.dinner.amount;
+        const currentBreakfastBalance = user.balances.breakfast.amount;
+
+        // Due = totalCharge - currentBalance (positive = due, negative = advance)
+        const lunchDueAdvance = lunchTotalCharge - currentLunchBalance;
+        const dinnerDueAdvance = dinnerTotalCharge - currentDinnerBalance;
+        const breakfastDueAdvance = breakfastTotalCost - currentBreakfastBalance;
+
         // Balance summary
         const deposits = transactions.filter(t => t.type === 'deposit');
         const deductions = transactions.filter(t => t.type === 'deduction');
@@ -202,13 +212,19 @@ router.get('/monthly', protect, async (req, res) => {
                 month: parseInt(month),
                 startDate: monthSettings.startDate,
                 endDate: monthSettings.endDate,
-                totalDays: dates.length
+                totalDays: dates.length,
+                isFinalized: monthSettings.isFinalized || false
             },
             lunch: {
                 rate: monthSettings.lunchRate || 0,
                 daysOn: lunchDaysOn,
                 totalMeals: lunchMealsCount,
                 totalCharge: lunchTotalCharge,
+                currentBalance: currentLunchBalance,
+                dueAdvance: {
+                    amount: Math.abs(lunchDueAdvance),
+                    type: lunchDueAdvance > 0 ? 'due' : lunchDueAdvance < 0 ? 'advance' : 'settled'
+                },
                 dailyDetails: dailyLunchMeals
             },
             dinner: {
@@ -216,11 +232,31 @@ router.get('/monthly', protect, async (req, res) => {
                 daysOn: dinnerDaysOn,
                 totalMeals: dinnerMealsCount,
                 totalCharge: dinnerTotalCharge,
+                currentBalance: currentDinnerBalance,
+                dueAdvance: {
+                    amount: Math.abs(dinnerDueAdvance),
+                    type: dinnerDueAdvance > 0 ? 'due' : dinnerDueAdvance < 0 ? 'advance' : 'settled'
+                },
                 dailyDetails: dailyDinnerMeals
             },
             breakfast: {
                 totalCost: breakfastTotalCost,
+                currentBalance: currentBreakfastBalance,
+                dueAdvance: {
+                    amount: Math.abs(breakfastDueAdvance),
+                    type: breakfastDueAdvance > 0 ? 'due' : breakfastDueAdvance < 0 ? 'advance' : 'settled'
+                },
                 details: breakfastDetails
+            },
+            // Overall summary
+            summary: {
+                totalCharge: lunchTotalCharge + dinnerTotalCharge + breakfastTotalCost,
+                totalBalance: currentLunchBalance + currentDinnerBalance + currentBreakfastBalance,
+                netDueAdvance: {
+                    amount: Math.abs((lunchDueAdvance + dinnerDueAdvance + breakfastDueAdvance)),
+                    type: (lunchDueAdvance + dinnerDueAdvance + breakfastDueAdvance) > 0 ? 'due' :
+                          (lunchDueAdvance + dinnerDueAdvance + breakfastDueAdvance) < 0 ? 'advance' : 'settled'
+                }
             },
             transactions: {
                 totalDeposits,
@@ -320,6 +356,13 @@ router.get('/all-users', protect, isManager, async (req, res) => {
             const lunchCharge = totalLunchMeals * (monthSettings.lunchRate || 0);
             const dinnerCharge = totalDinnerMeals * (monthSettings.dinnerRate || 0);
 
+            // Calculate due/advance
+            const lunchBalance = user.balances.lunch.amount;
+            const dinnerBalance = user.balances.dinner.amount;
+            const lunchDue = lunchCharge - lunchBalance;
+            const dinnerDue = dinnerCharge - dinnerBalance;
+            const totalDue = lunchDue + dinnerDue;
+
             return {
                 user: {
                     _id: user._id,
@@ -329,14 +372,26 @@ router.get('/all-users', protect, isManager, async (req, res) => {
                 lunch: {
                     totalMeals: totalLunchMeals,
                     totalCharge: lunchCharge,
-                    balance: user.balances.lunch
+                    balance: user.balances.lunch,
+                    dueAdvance: {
+                        amount: Math.abs(lunchDue),
+                        type: lunchDue > 0 ? 'due' : lunchDue < 0 ? 'advance' : 'settled'
+                    }
                 },
                 dinner: {
                     totalMeals: totalDinnerMeals,
                     totalCharge: dinnerCharge,
-                    balance: user.balances.dinner
+                    balance: user.balances.dinner,
+                    dueAdvance: {
+                        amount: Math.abs(dinnerDue),
+                        type: dinnerDue > 0 ? 'due' : dinnerDue < 0 ? 'advance' : 'settled'
+                    }
                 },
-                totalCharge: lunchCharge + dinnerCharge
+                totalCharge: lunchCharge + dinnerCharge,
+                totalDueAdvance: {
+                    amount: Math.abs(totalDue),
+                    type: totalDue > 0 ? 'due' : totalDue < 0 ? 'advance' : 'settled'
+                }
             };
         });
 
@@ -346,6 +401,13 @@ router.get('/all-users', protect, isManager, async (req, res) => {
         const grandTotalLunchCharge = userReports.reduce((sum, r) => sum + r.lunch.totalCharge, 0);
         const grandTotalDinnerCharge = userReports.reduce((sum, r) => sum + r.dinner.totalCharge, 0);
 
+        // Calculate total due/advance
+        const usersWithDue = userReports.filter(r => r.totalDueAdvance.type === 'due');
+        const usersWithAdvance = userReports.filter(r => r.totalDueAdvance.type === 'advance');
+        const totalDueAmount = usersWithDue.reduce((sum, r) => sum + r.totalDueAdvance.amount, 0);
+        const totalAdvanceAmount = usersWithAdvance.reduce((sum, r) => sum + r.totalDueAdvance.amount, 0);
+        const netAmount = totalDueAmount - totalAdvanceAmount;
+
         res.json({
             period: {
                 year: parseInt(year),
@@ -353,7 +415,8 @@ router.get('/all-users', protect, isManager, async (req, res) => {
                 startDate: monthSettings.startDate,
                 endDate: monthSettings.endDate,
                 lunchRate: monthSettings.lunchRate || 0,
-                dinnerRate: monthSettings.dinnerRate || 0
+                dinnerRate: monthSettings.dinnerRate || 0,
+                isFinalized: monthSettings.isFinalized || false
             },
             users: userReports,
             summary: {
@@ -366,7 +429,16 @@ router.get('/all-users', protect, isManager, async (req, res) => {
                     grandTotalMeals: grandTotalDinnerMeals,
                     grandTotalCharge: grandTotalDinnerCharge
                 },
-                grandTotalCharge: grandTotalLunchCharge + grandTotalDinnerCharge
+                grandTotalCharge: grandTotalLunchCharge + grandTotalDinnerCharge,
+                dueAdvanceSummary: {
+                    usersWithDue: usersWithDue.length,
+                    usersWithAdvance: usersWithAdvance.length,
+                    usersSettled: userReports.length - usersWithDue.length - usersWithAdvance.length,
+                    totalDueAmount,
+                    totalAdvanceAmount,
+                    netAmount: Math.abs(netAmount),
+                    netType: netAmount > 0 ? 'due' : netAmount < 0 ? 'advance' : 'settled'
+                }
             }
         });
     } catch (error) {

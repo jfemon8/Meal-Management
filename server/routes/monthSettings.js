@@ -143,6 +143,135 @@ router.put('/:id/finalize', protect, isManager, async (req, res) => {
     }
 });
 
+// @route   POST /api/month-settings/:id/carry-forward
+// @desc    Carry forward balances to next month (Manager+ only)
+// @access  Private (Manager+)
+router.post('/:id/carry-forward', protect, isManager, async (req, res) => {
+    try {
+        const settings = await MonthSettings.findById(req.params.id);
+        if (!settings) {
+            return res.status(404).json({ message: 'মাসের সেটিংস পাওয়া যায়নি' });
+        }
+
+        // Must be finalized first
+        if (!settings.isFinalized) {
+            return res.status(400).json({
+                message: 'ক্যারি ফরওয়ার্ড করার আগে মাস ফাইনালাইজ করুন'
+            });
+        }
+
+        // Check if already carried forward
+        if (settings.isCarriedForward) {
+            return res.status(400).json({
+                message: 'এই মাসের ব্যালেন্স আগেই ক্যারি ফরওয়ার্ড করা হয়েছে'
+            });
+        }
+
+        // Calculate next month
+        let nextYear = settings.year;
+        let nextMonth = settings.month + 1;
+        if (nextMonth > 12) {
+            nextMonth = 1;
+            nextYear++;
+        }
+
+        // Check if next month settings exist
+        let nextMonthSettings = await MonthSettings.findOne({
+            year: nextYear,
+            month: nextMonth
+        });
+
+        if (!nextMonthSettings) {
+            // Create next month settings with default values
+            const { startDate, endDate } = getDefaultMonthRange(nextYear, nextMonth);
+            nextMonthSettings = await MonthSettings.create({
+                year: nextYear,
+                month: nextMonth,
+                startDate,
+                endDate,
+                lunchRate: settings.lunchRate,
+                dinnerRate: settings.dinnerRate,
+                createdBy: req.user._id,
+                notes: `Auto-created from carry forward of ${settings.year}-${settings.month}`
+            });
+        }
+
+        // Get all active users
+        const User = require('../models/User');
+        const Transaction = require('../models/Transaction');
+        const users = await User.find({ isActive: true });
+
+        const carryForwardResults = [];
+        const transactions = [];
+
+        for (const user of users) {
+            const userResult = {
+                userId: user._id,
+                userName: user.name,
+                balances: {}
+            };
+
+            // Process each balance type
+            for (const balanceType of ['breakfast', 'lunch', 'dinner']) {
+                const currentBalance = user.balances[balanceType].amount;
+
+                if (currentBalance !== 0) {
+                    // Create carry forward transaction (adjustment type)
+                    const transaction = await Transaction.create({
+                        user: user._id,
+                        type: 'adjustment',
+                        balanceType,
+                        amount: 0, // No actual change, just a record
+                        previousBalance: currentBalance,
+                        newBalance: currentBalance,
+                        description: `ক্যারি ফরওয়ার্ড: ${settings.year}-${settings.month} থেকে ${nextYear}-${nextMonth}`,
+                        reference: settings._id,
+                        referenceModel: 'MonthSettings',
+                        performedBy: req.user._id
+                    });
+
+                    transactions.push(transaction);
+                    userResult.balances[balanceType] = {
+                        carriedForward: currentBalance,
+                        type: currentBalance >= 0 ? 'advance' : 'due'
+                    };
+                } else {
+                    userResult.balances[balanceType] = {
+                        carriedForward: 0,
+                        type: 'settled'
+                    };
+                }
+            }
+
+            carryForwardResults.push(userResult);
+        }
+
+        // Mark as carried forward
+        settings.isCarriedForward = true;
+        settings.carriedForwardAt = new Date();
+        settings.carriedForwardBy = req.user._id;
+        await settings.save();
+
+        res.json({
+            message: 'ব্যালেন্স সফলভাবে ক্যারি ফরওয়ার্ড করা হয়েছে',
+            fromMonth: {
+                year: settings.year,
+                month: settings.month
+            },
+            toMonth: {
+                year: nextYear,
+                month: nextMonth
+            },
+            usersProcessed: users.length,
+            transactionsCreated: transactions.length,
+            results: carryForwardResults
+        });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'সার্ভার এরর' });
+    }
+});
+
 // @route   GET /api/month-settings/current
 // @desc    Get current month settings
 // @access  Private
