@@ -38,6 +38,8 @@ app.use('/api/reports', require('./routes/reports'));
 app.use('/api/wallet', require('./routes/wallet'));
 app.use('/api/rule-overrides', require('./routes/ruleOverrides'));
 app.use('/api/global-settings', require('./routes/globalSettings'));
+app.use('/api/super-admin', require('./routes/superAdmin'));
+app.use('/api/feature-flags', require('./routes/featureFlags'));
 
 // Error handling middleware
 app.use((err, req, res, next) => {

@@ -125,6 +125,33 @@ const userSchema = new mongoose.Schema({
         type: Boolean,
         default: true
     },
+    // Soft delete fields
+    isDeleted: {
+        type: Boolean,
+        default: false
+    },
+    deletedAt: {
+        type: Date,
+        default: null
+    },
+    deletedBy: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User',
+        default: null
+    },
+    deletedReason: {
+        type: String,
+        default: ''
+    },
+    restoredAt: {
+        type: Date,
+        default: null
+    },
+    restoredBy: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User',
+        default: null
+    },
     profileImage: {
         type: String,
         default: ''

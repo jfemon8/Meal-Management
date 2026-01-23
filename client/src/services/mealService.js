@@ -394,3 +394,141 @@ export const globalSettingsService = {
         return response.data;
     }
 };
+
+export const superAdminService = {
+    // Bulk rate update for all month settings
+    bulkRateUpdate: async (updateType, rates, options = {}) => {
+        const response = await api.put('/super-admin/bulk-rate-update', { updateType, rates, ...options });
+        return response.data;
+    },
+
+    // Soft delete user
+    softDeleteUser: async (userId, reason) => {
+        const response = await api.put(`/super-admin/users/${userId}/soft-delete`, { reason });
+        return response.data;
+    },
+
+    // Restore soft deleted user
+    restoreUser: async (userId) => {
+        const response = await api.put(`/super-admin/users/${userId}/restore`);
+        return response.data;
+    },
+
+    // Get all soft deleted users
+    getDeletedUsers: async () => {
+        const response = await api.get('/super-admin/users/deleted');
+        return response.data;
+    },
+
+    // Permanently delete user
+    permanentDeleteUser: async (userId, confirmation) => {
+        const response = await api.delete(`/super-admin/users/${userId}/permanent`, {
+            data: { confirmation }
+        });
+        return response.data;
+    },
+
+    // Correct transaction data
+    correctTransaction: async (transactionId, correctionData) => {
+        const response = await api.put(`/super-admin/transactions/${transactionId}/correct`, correctionData);
+        return response.data;
+    },
+
+    // Balance correction for user
+    balanceCorrection: async (userId, correctionData) => {
+        const response = await api.put(`/super-admin/users/${userId}/balance-correction`, correctionData);
+        return response.data;
+    },
+
+    // Get database stats
+    getDatabaseStats: async () => {
+        const response = await api.get('/super-admin/db/stats');
+        return response.data;
+    },
+
+    // Cleanup orphaned records
+    cleanupOrphans: async (dryRun = true) => {
+        const response = await api.post('/super-admin/db/cleanup-orphans', { dryRun });
+        return response.data;
+    },
+
+    // Cleanup old data
+    cleanupOldData: async (olderThanMonths, dryRun = true) => {
+        const response = await api.post('/super-admin/db/cleanup-old-data', { olderThanMonths, dryRun });
+        return response.data;
+    },
+
+    // Recalculate all balances
+    recalculateAllBalances: async (dryRun = true) => {
+        const response = await api.post('/super-admin/db/recalculate-all-balances', { dryRun });
+        return response.data;
+    }
+};
+
+export const featureFlagService = {
+    // Get all feature flags (Admin+)
+    getAllFlags: async (params = {}) => {
+        const response = await api.get('/feature-flags', { params });
+        return response.data;
+    },
+
+    // Get active features for current user
+    getActiveFeatures: async () => {
+        const response = await api.get('/feature-flags/active');
+        return response.data;
+    },
+
+    // Check if specific feature is enabled
+    isFeatureEnabled: async (key) => {
+        const response = await api.get(`/feature-flags/check/${key}`);
+        return response.data;
+    },
+
+    // Get single feature flag
+    getFlag: async (id) => {
+        const response = await api.get(`/feature-flags/${id}`);
+        return response.data;
+    },
+
+    // Create feature flag (SuperAdmin)
+    createFlag: async (data) => {
+        const response = await api.post('/feature-flags', data);
+        return response.data;
+    },
+
+    // Update feature flag (SuperAdmin)
+    updateFlag: async (id, data) => {
+        const response = await api.put(`/feature-flags/${id}`, data);
+        return response.data;
+    },
+
+    // Toggle feature flag (SuperAdmin)
+    toggleFlag: async (id, reason = '') => {
+        const response = await api.put(`/feature-flags/${id}/toggle`, { reason });
+        return response.data;
+    },
+
+    // Update feature config (SuperAdmin)
+    updateFlagConfig: async (id, config, reason = '') => {
+        const response = await api.put(`/feature-flags/${id}/config`, { config, reason });
+        return response.data;
+    },
+
+    // Manage beta users (SuperAdmin)
+    manageBetaUsers: async (id, action, userIds) => {
+        const response = await api.put(`/feature-flags/${id}/beta-users`, { action, userIds });
+        return response.data;
+    },
+
+    // Delete feature flag (SuperAdmin)
+    deleteFlag: async (id) => {
+        const response = await api.delete(`/feature-flags/${id}`);
+        return response.data;
+    },
+
+    // Get categories list
+    getCategories: async () => {
+        const response = await api.get('/feature-flags/categories/list');
+        return response.data;
+    }
+};

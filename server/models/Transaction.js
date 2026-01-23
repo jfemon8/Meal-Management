@@ -69,6 +69,32 @@ const transactionSchema = new mongoose.Schema({
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User',
         required: true
+    },
+    // Data correction fields (Super Admin only)
+    isCorrected: {
+        type: Boolean,
+        default: false
+    },
+    correctedAt: {
+        type: Date,
+        default: null
+    },
+    correctedBy: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User',
+        default: null
+    },
+    correctionReason: {
+        type: String,
+        default: ''
+    },
+    originalAmount: {
+        type: Number,
+        default: null
+    },
+    originalDescription: {
+        type: String,
+        default: null
     }
 }, {
     timestamps: true
