@@ -31,6 +31,11 @@ const AllUsersReport = lazy(() => import('./pages/Manager/AllUsersReport'));
 // Admin Pages
 const ManageUsers = lazy(() => import('./pages/Admin/ManageUsers'));
 const HolidayManagement = lazy(() => import('./pages/Admin/HolidayManagement'));
+const AuditLogs = lazy(() => import('./pages/Admin/AuditLogs'));
+
+// SuperAdmin Pages
+const SystemSettings = lazy(() => import('./pages/SuperAdmin/SystemSettings'));
+const RoleManagement = lazy(() => import('./pages/SuperAdmin/RoleManagement'));
 
 // Loading component
 const PageLoader = () => (
@@ -79,6 +84,11 @@ function App() {
                     {/* Admin Routes */}
                     <Route path="admin/users" element={<ProtectedRoute requiredRole="admin"><ManageUsers /></ProtectedRoute>} />
                     <Route path="admin/holidays" element={<ProtectedRoute requiredRole="admin"><HolidayManagement /></ProtectedRoute>} />
+                    <Route path="admin/audit-logs" element={<ProtectedRoute requiredRole="admin"><AuditLogs /></ProtectedRoute>} />
+
+                    {/* SuperAdmin Routes */}
+                    <Route path="superadmin/system" element={<ProtectedRoute requiredRole="superadmin"><SystemSettings /></ProtectedRoute>} />
+                    <Route path="superadmin/roles" element={<ProtectedRoute requiredRole="superadmin"><RoleManagement /></ProtectedRoute>} />
                 </Route>
 
                 {/* Fallback */}

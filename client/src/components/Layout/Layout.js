@@ -16,12 +16,16 @@ import {
     FiClipboard,
     FiUserCheck,
     FiSun,
-    FiMoon
+    FiMoon,
+    FiCreditCard,
+    FiActivity,
+    FiShield,
+    FiDatabase
 } from 'react-icons/fi';
 import BDTIcon from '../Icons/BDTIcon';
 
 const Layout = () => {
-    const { user, logout, isManager, isAdmin } = useAuth();
+    const { user, logout, isManager, isAdmin, isSuperAdmin } = useAuth();
     const { theme, toggleTheme } = useTheme();
     const location = useLocation();
     const navigate = useNavigate();
@@ -32,26 +36,37 @@ const Layout = () => {
         navigate('/login');
     };
 
+    // Main menu - visible to all users
     const menuItems = [
         { path: '/dashboard', icon: FiHome, label: 'ড্যাশবোর্ড' },
         { path: '/meals', icon: FiCalendar, label: 'মিল ক্যালেন্ডার' },
+        { path: '/wallet', icon: FiCreditCard, label: 'ওয়ালেট' },
         { path: '/transactions', icon: BDTIcon, label: 'লেনদেন' },
         { path: '/reports/monthly', icon: FiFileText, label: 'মাসিক রিপোর্ট' },
         { path: '/profile', icon: FiUser, label: 'প্রোফাইল' },
     ];
 
+    // Manager menu - visible to Manager, Admin, SuperAdmin
     const managerMenuItems = [
-        { path: '/manager/users', icon: FiUsers, label: 'সকল ইউজার' },
-        { path: '/manager/balance', icon: BDTIcon, label: 'ব্যালেন্স ম্যানেজ' },
-        { path: '/manager/breakfast', icon: FiCoffee, label: 'নাস্তা ম্যানেজ' },
         { path: '/manager/daily-meals', icon: FiClipboard, label: 'দৈনিক মিল' },
+        { path: '/manager/breakfast', icon: FiCoffee, label: 'নাস্তা ম্যানেজ' },
+        { path: '/manager/balance', icon: BDTIcon, label: 'ব্যালেন্স ম্যানেজ' },
+        { path: '/manager/users', icon: FiUsers, label: 'সকল ইউজার' },
         { path: '/manager/month-settings', icon: FiSettings, label: 'মাসের সেটিংস' },
         { path: '/manager/reports', icon: FiFileText, label: 'সব রিপোর্ট' },
     ];
 
+    // Admin menu - visible to Admin, SuperAdmin
     const adminMenuItems = [
         { path: '/admin/users', icon: FiUserCheck, label: 'ইউজার ম্যানেজ' },
         { path: '/admin/holidays', icon: FiSun, label: 'ছুটি ম্যানেজ' },
+        { path: '/admin/audit-logs', icon: FiActivity, label: 'অডিট লগ' },
+    ];
+
+    // SuperAdmin menu - visible only to SuperAdmin
+    const superAdminMenuItems = [
+        { path: '/superadmin/system', icon: FiDatabase, label: 'সিস্টেম সেটিংস' },
+        { path: '/superadmin/roles', icon: FiShield, label: 'রোল ম্যানেজ' },
     ];
 
     const isActive = (path) => location.pathname === path;
@@ -140,9 +155,19 @@ const Layout = () => {
 
                     {/* Admin Menu */}
                     {isAdmin && (
-                        <div className="pt-4 border-t dark:border-gray-700">
+                        <div className="mb-4 pt-4 border-t dark:border-gray-700">
                             <p className="text-xs text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-2 px-4">এডমিন</p>
                             {adminMenuItems.map((item) => (
+                                <NavLink key={item.path} item={item} />
+                            ))}
+                        </div>
+                    )}
+
+                    {/* SuperAdmin Menu */}
+                    {isSuperAdmin && (
+                        <div className="pt-4 border-t dark:border-gray-700">
+                            <p className="text-xs text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-2 px-4">সুপার এডমিন</p>
+                            {superAdminMenuItems.map((item) => (
                                 <NavLink key={item.path} item={item} />
                             ))}
                         </div>
