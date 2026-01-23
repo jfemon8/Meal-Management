@@ -14,6 +14,7 @@ app.use(express.json());
 
 // Import cron jobs
 const { initHolidayCron } = require('./jobs/holidayCron');
+const { initNotificationCron } = require('./jobs/notificationCron');
 
 // MongoDB Connection
 mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/meal-management')
@@ -22,6 +23,7 @@ mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/meal-mana
         // Initialize cron jobs after DB connection
         if (process.env.NODE_ENV !== 'test') {
             initHolidayCron();
+            initNotificationCron();
         }
     })
     .catch(err => console.error('❌ MongoDB Connection Error:', err));
@@ -40,6 +42,7 @@ app.use('/api/rule-overrides', require('./routes/ruleOverrides'));
 app.use('/api/global-settings', require('./routes/globalSettings'));
 app.use('/api/super-admin', require('./routes/superAdmin'));
 app.use('/api/feature-flags', require('./routes/featureFlags'));
+app.use('/api/notifications', require('./routes/notifications'));
 
 // Error handling middleware
 app.use((err, req, res, next) => {

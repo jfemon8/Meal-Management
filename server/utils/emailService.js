@@ -329,9 +329,219 @@ Meal Management System
     };
 };
 
+/**
+ * Send Low Balance Warning Email
+ * @param {string} email - Recipient email
+ * @param {string} name - User name
+ * @param {string} balanceType - Balance type (breakfast/lunch/dinner)
+ * @param {number} currentBalance - Current balance amount
+ * @param {number} threshold - Warning threshold
+ * @returns {Promise<Object>} Send result
+ */
+const sendLowBalanceEmail = async (email, name, balanceType, currentBalance, threshold) => {
+    const balanceNames = {
+        breakfast: 'ব্রেকফাস্ট',
+        lunch: 'লাঞ্চ',
+        dinner: 'ডিনার'
+    };
+
+    const emailContent = {
+        to: email,
+        subject: `কম ব্যালেন্স সতর্কতা - ${balanceNames[balanceType]}`,
+        html: `
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background: #ef4444; color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0; }
+        .content { background: #f9fafb; padding: 30px; border: 1px solid #e5e7eb; }
+        .balance-box { background: white; border: 2px solid #ef4444; padding: 20px; text-align: center; margin: 20px 0; border-radius: 8px; }
+        .balance { font-size: 32px; font-weight: bold; color: #ef4444; }
+        .button { display: inline-block; background: #10b981; color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; margin: 20px 0; }
+        .footer { text-align: center; color: #6b7280; font-size: 14px; padding: 20px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>⚠️ কম ব্যালেন্স সতর্কতা</h1>
+        </div>
+        <div class="content">
+            <h2>প্রিয় ${name},</h2>
+            <p>আপনার <strong>${balanceNames[balanceType]}</strong> ব্যালেন্স সতর্কতা সীমার নিচে নেমে গেছে।</p>
+
+            <div class="balance-box">
+                <p>বর্তমান ব্যালেন্স</p>
+                <div class="balance">${currentBalance} টাকা</div>
+                <p style="color: #6b7280;">সতর্কতা সীমা: ${threshold} টাকা</p>
+            </div>
+
+            <p>মিল সার্ভিস চালু রাখতে অনুগ্রহ করে আপনার ব্যালেন্স রিচার্জ করুন।</p>
+
+            <div style="text-align: center;">
+                <a href="#" class="button">ব্যালেন্স রিচার্জ করুন</a>
+            </div>
+        </div>
+        <div class="footer">
+            <p>ধন্যবাদ,<br>Meal Management System টিম</p>
+        </div>
+    </div>
+</body>
+</html>
+        `
+    };
+
+    console.log('📧 Low balance email to be sent to:', email);
+    console.log(`Balance Type: ${balanceType}, Current: ${currentBalance}, Threshold: ${threshold}`);
+
+    return {
+        success: true,
+        messageId: `dev-${Date.now()}`,
+        message: 'Email sent successfully (development mode)'
+    };
+};
+
+/**
+ * Send Month Closing Reminder Email
+ */
+const sendMonthClosingEmail = async (email, name, year, month, daysRemaining) => {
+    const emailContent = {
+        to: email,
+        subject: `মাস শেষের রিমাইন্ডার - ${daysRemaining} দিন বাকি`,
+        html: `
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background: #f59e0b; color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0; }
+        .content { background: #f9fafb; padding: 30px; border: 1px solid #e5e7eb; }
+        .days-box { background: white; border: 2px solid #f59e0b; padding: 20px; text-align: center; margin: 20px 0; border-radius: 8px; }
+        .days { font-size: 48px; font-weight: bold; color: #f59e0b; }
+        .button { display: inline-block; background: #10b981; color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; margin: 10px 5px; }
+        .footer { text-align: center; color: #6b7280; font-size: 14px; padding: 20px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📅 মাস শেষের রিমাইন্ডার</h1>
+        </div>
+        <div class="content">
+            <h2>প্রিয় ${name},</h2>
+            <p>${year} সালের ${month} মাস শেষ হতে চলেছে।</p>
+
+            <div class="days-box">
+                <div class="days">${daysRemaining}</div>
+                <p>দিন বাকি</p>
+            </div>
+
+            <p>অনুগ্রহ করে:</p>
+            <ul>
+                <li>আপনার মিল স্ট্যাটাস চেক করুন</li>
+                <li>প্রয়োজনে ব্যালেন্স রিচার্জ করুন</li>
+                <li>বাকি দিনের মিল কনফার্ম করুন</li>
+            </ul>
+
+            <div style="text-align: center;">
+                <a href="#" class="button">মিল দেখুন</a>
+                <a href="#" class="button">ব্যালেন্স দেখুন</a>
+            </div>
+        </div>
+        <div class="footer">
+            <p>ধন্যবাদ,<br>Meal Management System টিম</p>
+        </div>
+    </div>
+</body>
+</html>
+        `
+    };
+
+    console.log('📧 Month closing email to be sent to:', email);
+
+    return {
+        success: true,
+        messageId: `dev-${Date.now()}`,
+        message: 'Email sent successfully (development mode)'
+    };
+};
+
+/**
+ * Send Holiday Update Email
+ */
+const sendHolidayUpdateEmail = async (email, name, action, holiday) => {
+    const actionTexts = {
+        added: 'নতুন ছুটি যোগ হয়েছে',
+        updated: 'ছুটির তথ্য আপডেট হয়েছে',
+        removed: 'ছুটি বাতিল হয়েছে'
+    };
+
+    const date = new Date(holiday.date).toLocaleDateString('bn-BD', {
+        day: 'numeric',
+        month: 'long',
+        year: 'numeric',
+        weekday: 'long'
+    });
+
+    const emailContent = {
+        to: email,
+        subject: `${actionTexts[action]} - ${holiday.nameBn || holiday.name}`,
+        html: `
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background: #6366f1; color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0; }
+        .content { background: #f9fafb; padding: 30px; border: 1px solid #e5e7eb; }
+        .holiday-box { background: white; border-left: 4px solid #6366f1; padding: 20px; margin: 20px 0; }
+        .footer { text-align: center; color: #6b7280; font-size: 14px; padding: 20px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎉 ${actionTexts[action]}</h1>
+        </div>
+        <div class="content">
+            <h2>প্রিয় ${name},</h2>
+
+            <div class="holiday-box">
+                <h3>${holiday.nameBn || holiday.name}</h3>
+                <p><strong>তারিখ:</strong> ${date}</p>
+                <p><strong>ধরন:</strong> ${holiday.type === 'government' ? 'সরকারি ছুটি' : holiday.type === 'religious' ? 'ধর্মীয় ছুটি' : 'ঐচ্ছিক ছুটি'}</p>
+            </div>
+
+            <p>${action === 'removed' ? 'এই দিন এখন কর্মদিবস হিসেবে গণ্য হবে এবং মিল চালু থাকবে।' : 'এই দিন মিল বন্ধ থাকবে।'}</p>
+        </div>
+        <div class="footer">
+            <p>ধন্যবাদ,<br>Meal Management System টিম</p>
+        </div>
+    </div>
+</body>
+</html>
+        `
+    };
+
+    console.log('📧 Holiday update email to be sent to:', email);
+
+    return {
+        success: true,
+        messageId: `dev-${Date.now()}`,
+        message: 'Email sent successfully (development mode)'
+    };
+};
+
 module.exports = {
     sendOTPEmail,
     sendPasswordResetEmail,
     sendWelcomeEmail,
-    sendLoginAlertEmail
+    sendLoginAlertEmail,
+    sendLowBalanceEmail,
+    sendMonthClosingEmail,
+    sendHolidayUpdateEmail
 };
