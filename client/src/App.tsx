@@ -27,6 +27,7 @@ const BreakfastManagement = lazy(() => import('./pages/Manager/BreakfastManageme
 const MonthSettings = lazy(() => import('./pages/Manager/MonthSettings'));
 const DailyMeals = lazy(() => import('./pages/Manager/DailyMeals'));
 const AllUsersReport = lazy(() => import('./pages/Manager/AllUsersReport'));
+const UserMealCalendar = lazy(() => import('./pages/Manager/UserMealCalendar'));
 
 // Admin Pages
 const ManageUsers = lazy(() => import('./pages/Admin/ManageUsers'));
@@ -79,6 +80,7 @@ function App() {
                     <Route path="manager/breakfast" element={<ProtectedRoute requiredRole="manager"><BreakfastManagement /></ProtectedRoute>} />
                     <Route path="manager/month-settings" element={<ProtectedRoute requiredRole="manager"><MonthSettings /></ProtectedRoute>} />
                     <Route path="manager/daily-meals" element={<ProtectedRoute requiredRole="manager"><DailyMeals /></ProtectedRoute>} />
+                    <Route path="manager/user-meals" element={<ProtectedRoute requiredRole="manager"><UserMealCalendar /></ProtectedRoute>} />
                     <Route path="manager/reports" element={<ProtectedRoute requiredRole="manager"><AllUsersReport /></ProtectedRoute>} />
 
                     {/* Admin Routes */}

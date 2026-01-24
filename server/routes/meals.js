@@ -200,7 +200,7 @@ router.put('/bulk-toggle', protect, [
             return res.status(400).json({ errors: errors.array() });
         }
 
-        const { startDate, endDate, isOn, mealType = 'lunch' } = req.body;
+        const { startDate, endDate, isOn, mealType = 'lunch', userId } = req.body;
         const start = new Date(startDate);
         const end = new Date(endDate);
         const today = new Date();
@@ -218,6 +218,14 @@ router.put('/bulk-toggle', protect, [
         }
 
         const isManagerRole = ['manager', 'admin', 'superadmin'].includes(req.user.role);
+
+        // Determine target user
+        let targetUserId = req.user._id;
+        if (userId && isManagerRole) {
+            targetUserId = userId;
+        } else if (userId && userId !== req.user._id.toString()) {
+            return res.status(403).json({ message: 'অন্যের মিল পরিবর্তন করার অনুমতি নেই' });
+        }
 
         // Users can only change future dates
         if (!isManagerRole && start <= today) {
@@ -237,7 +245,7 @@ router.put('/bulk-toggle', protect, [
         // Bulk update meals
         const bulkOps = futureDates.map(date => ({
             updateOne: {
-                filter: { user: req.user._id, date, mealType },
+                filter: { user: targetUserId, date, mealType },
                 update: {
                     isOn,
                     count: isOn ? 1 : 0,
@@ -252,7 +260,7 @@ router.put('/bulk-toggle', protect, [
 
         // Create audit logs for bulk operation
         const auditLogs = futureDates.map(date => ({
-            user: req.user._id,
+            user: targetUserId,
             date,
             mealType,
             action: isOn ? 'bulk_on' : 'bulk_off',
@@ -260,7 +268,7 @@ router.put('/bulk-toggle', protect, [
             newState: { isOn, count: isOn ? 1 : 0 },
             changedBy: req.user._id,
             changedByRole: req.user.role,
-            notes: `Bulk ${isOn ? 'ON' : 'OFF'}: ${formatDate(start)} - ${formatDate(end)}`,
+            notes: `Bulk ${isOn ? 'ON' : 'OFF'}: ${formatDate(start)} - ${formatDate(end)}${userId ? ' (Manager)' : ''}`,
             ipAddress: req.ip || req.connection?.remoteAddress || ''
         }));
 

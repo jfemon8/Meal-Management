@@ -309,7 +309,7 @@ const Wallet: React.FC = () => {
                                         borderRadius: '8px',
                                         color: '#F9FAFB'
                                     }}
-                                    formatter={(value: number) => [`৳${value.toFixed(2)}`, '']}
+                                    formatter={(value) => [`৳${(value as number)?.toFixed(2) ?? 0}`, '']}
                                 />
                                 <Legend />
                                 <Line

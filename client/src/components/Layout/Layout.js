@@ -49,6 +49,7 @@ const Layout = () => {
     // Manager menu - visible to Manager, Admin, SuperAdmin
     const managerMenuItems = [
         { path: '/manager/daily-meals', icon: FiClipboard, label: 'দৈনিক মিল' },
+        { path: '/manager/user-meals', icon: FiCalendar, label: 'ইউজার মিল ক্যালেন্ডার' },
         { path: '/manager/breakfast', icon: FiCoffee, label: 'নাস্তা ম্যানেজ' },
         { path: '/manager/balance', icon: BDTIcon, label: 'ব্যালেন্স ম্যানেজ' },
         { path: '/manager/users', icon: FiUsers, label: 'সকল ইউজার' },

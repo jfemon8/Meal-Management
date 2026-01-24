@@ -38,8 +38,10 @@ export const mealService = {
     },
 
     // Bulk toggle meals for date range
-    bulkToggle: async (startDate, endDate, isOn, mealType = 'lunch') => {
-        const response = await api.put('/meals/bulk-toggle', { startDate, endDate, isOn, mealType });
+    bulkToggle: async (startDate, endDate, isOn, mealType = 'lunch', userId = null) => {
+        const data = { startDate, endDate, isOn, mealType };
+        if (userId) data.userId = userId;
+        const response = await api.put('/meals/bulk-toggle', data);
         return response.data;
     },
 
