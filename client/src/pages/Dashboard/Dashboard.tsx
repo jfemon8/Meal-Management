@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useMealSummary } from '../../hooks/queries/useMeals';
 import { useCurrentMonthSettings } from '../../hooks/queries/useMonthSettings';
-import { FiCalendar, FiTrendingUp, FiUsers, FiAlertCircle, FiCoffee, FiDollarSign, FiClock, FiList } from 'react-icons/fi';
+import { FiCalendar, FiTrendingUp, FiUsers, FiAlertCircle, FiCoffee, FiDollarSign, FiClock, FiList, FiShield, FiUserCheck, FiUserX, FiActivity } from 'react-icons/fi';
 import { format } from 'date-fns';
 import { bn } from 'date-fns/locale';
 import BDTIcon from '../../components/Icons/BDTIcon';
@@ -20,6 +20,40 @@ interface UpcomingOffDay {
     isAlsoHoliday?: boolean;
     holidayName?: string;
     holidayType?: string;
+}
+
+interface AdminDashboardStats {
+    roleStats: {
+        users: number;
+        managers: number;
+        admins: number;
+        superadmins: number;
+        total: number;
+    };
+    userStats: {
+        inactive: number;
+        newThisMonth: number;
+        frozenBalances: number;
+    };
+    balanceStats: {
+        breakfast: number;
+        lunch: number;
+        dinner: number;
+        total: number;
+    };
+    transactionSummary: {
+        deposits: { amount: number; count: number };
+        deductions: { amount: number; count: number };
+        adjustments: { amount: number; count: number };
+        refunds: { amount: number; count: number };
+    };
+    systemAlerts: Array<{
+        type: 'info' | 'warning' | 'error' | 'success';
+        title: string;
+        message: string;
+        actionUrl?: string;
+        priority: 'low' | 'normal' | 'high';
+    }>;
 }
 
 interface ManagerDashboardStats {
@@ -81,11 +115,13 @@ const StatCard: React.FC<StatCardProps> = ({ icon: Icon, title, value, subtitle,
 );
 
 const Dashboard: React.FC = () => {
-    const { user, isManager } = useAuth();
+    const { user, isManager, isAdmin } = useAuth();
     const [upcomingOffDays, setUpcomingOffDays] = useState<UpcomingOffDay[]>([]);
     const [offDaysLoading, setOffDaysLoading] = useState(true);
     const [managerStats, setManagerStats] = useState<ManagerDashboardStats | null>(null);
     const [managerStatsLoading, setManagerStatsLoading] = useState(true);
+    const [adminStats, setAdminStats] = useState<AdminDashboardStats | null>(null);
+    const [adminStatsLoading, setAdminStatsLoading] = useState(true);
 
     const today = new Date();
     const year = today.getFullYear();
@@ -129,6 +165,25 @@ const Dashboard: React.FC = () => {
         };
         fetchManagerStats();
     }, [isManager]);
+
+    // Fetch admin dashboard stats (only for admins)
+    useEffect(() => {
+        const fetchAdminStats = async () => {
+            if (!isAdmin) {
+                setAdminStatsLoading(false);
+                return;
+            }
+            try {
+                const response = await api.get('/reports/admin-dashboard');
+                setAdminStats(response.data);
+            } catch (error) {
+                console.error('Failed to fetch admin stats:', error);
+            } finally {
+                setAdminStatsLoading(false);
+            }
+        };
+        fetchAdminStats();
+    }, [isAdmin]);
 
     return (
         <div className="space-y-6">
@@ -344,6 +399,193 @@ const Dashboard: React.FC = () => {
                 ) : null}
             </RequirePermission>
 
+            {/* Admin Dashboard Widgets */}
+            {isAdmin && (
+                <>
+                    {adminStatsLoading ? (
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                            {[1, 2, 3, 4].map((i) => (
+                                <div key={i} className="card">
+                                    <Skeleton className="h-6 w-32 mb-2" />
+                                    <Skeleton className="h-10 w-20" />
+                                </div>
+                            ))}
+                        </div>
+                    ) : adminStats ? (
+                        <>
+                            {/* Role Statistics */}
+                            <div className="card">
+                                <h2 className="text-lg font-semibold mb-4 flex items-center gap-2 text-gray-800 dark:text-gray-100">
+                                    <FiShield className="text-indigo-500" />
+                                    ইউজার রোল পরিসংখ্যান
+                                </h2>
+                                <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+                                    <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4 text-center">
+                                        <FiUsers className="w-6 h-6 mx-auto text-blue-600 dark:text-blue-400 mb-2" />
+                                        <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">
+                                            {adminStats.roleStats.users}
+                                        </p>
+                                        <p className="text-sm text-gray-600 dark:text-gray-400">ইউজার</p>
+                                    </div>
+                                    <div className="bg-green-50 dark:bg-green-900/20 rounded-lg p-4 text-center">
+                                        <FiUserCheck className="w-6 h-6 mx-auto text-green-600 dark:text-green-400 mb-2" />
+                                        <p className="text-2xl font-bold text-green-600 dark:text-green-400">
+                                            {adminStats.roleStats.managers}
+                                        </p>
+                                        <p className="text-sm text-gray-600 dark:text-gray-400">ম্যানেজার</p>
+                                    </div>
+                                    <div className="bg-purple-50 dark:bg-purple-900/20 rounded-lg p-4 text-center">
+                                        <FiShield className="w-6 h-6 mx-auto text-purple-600 dark:text-purple-400 mb-2" />
+                                        <p className="text-2xl font-bold text-purple-600 dark:text-purple-400">
+                                            {adminStats.roleStats.admins}
+                                        </p>
+                                        <p className="text-sm text-gray-600 dark:text-gray-400">এডমিন</p>
+                                    </div>
+                                    <div className="bg-red-50 dark:bg-red-900/20 rounded-lg p-4 text-center">
+                                        <FiShield className="w-6 h-6 mx-auto text-red-600 dark:text-red-400 mb-2" />
+                                        <p className="text-2xl font-bold text-red-600 dark:text-red-400">
+                                            {adminStats.roleStats.superadmins}
+                                        </p>
+                                        <p className="text-sm text-gray-600 dark:text-gray-400">সুপার এডমিন</p>
+                                    </div>
+                                    <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4 text-center">
+                                        <FiUsers className="w-6 h-6 mx-auto text-gray-600 dark:text-gray-400 mb-2" />
+                                        <p className="text-2xl font-bold text-gray-700 dark:text-gray-300">
+                                            {adminStats.roleStats.total}
+                                        </p>
+                                        <p className="text-sm text-gray-600 dark:text-gray-400">মোট সক্রিয়</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* User Stats & System Balance Row */}
+                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                                {/* User Stats */}
+                                <div className="card">
+                                    <h2 className="text-lg font-semibold mb-4 flex items-center gap-2 text-gray-800 dark:text-gray-100">
+                                        <FiActivity className="text-cyan-500" />
+                                        ইউজার পরিসংখ্যান
+                                    </h2>
+                                    <div className="grid grid-cols-3 gap-4">
+                                        <div className="bg-yellow-50 dark:bg-yellow-900/20 rounded-lg p-3 text-center">
+                                            <p className="text-2xl font-bold text-yellow-600 dark:text-yellow-400">
+                                                {adminStats.userStats.newThisMonth}
+                                            </p>
+                                            <p className="text-xs text-gray-600 dark:text-gray-400">এই মাসে নতুন</p>
+                                        </div>
+                                        <div className="bg-orange-50 dark:bg-orange-900/20 rounded-lg p-3 text-center">
+                                            <FiUserX className="w-5 h-5 mx-auto text-orange-600 dark:text-orange-400 mb-1" />
+                                            <p className="text-2xl font-bold text-orange-600 dark:text-orange-400">
+                                                {adminStats.userStats.inactive}
+                                            </p>
+                                            <p className="text-xs text-gray-600 dark:text-gray-400">নিষ্ক্রিয়</p>
+                                        </div>
+                                        <div className="bg-red-50 dark:bg-red-900/20 rounded-lg p-3 text-center">
+                                            <p className="text-2xl font-bold text-red-600 dark:text-red-400">
+                                                {adminStats.userStats.frozenBalances}
+                                            </p>
+                                            <p className="text-xs text-gray-600 dark:text-gray-400">ফ্রোজেন ব্যালেন্স</p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* System Balance */}
+                                <div className="card">
+                                    <h2 className="text-lg font-semibold mb-4 flex items-center gap-2 text-gray-800 dark:text-gray-100">
+                                        <FiDollarSign className="text-green-500" />
+                                        সিস্টেম ব্যালেন্স
+                                    </h2>
+                                    <div className="grid grid-cols-4 gap-2">
+                                        <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-2 text-center">
+                                            <p className="text-lg font-bold text-blue-600 dark:text-blue-400">
+                                                ৳{adminStats.balanceStats.breakfast}
+                                            </p>
+                                            <p className="text-xs text-gray-500">নাস্তা</p>
+                                        </div>
+                                        <div className="bg-green-50 dark:bg-green-900/20 rounded-lg p-2 text-center">
+                                            <p className="text-lg font-bold text-green-600 dark:text-green-400">
+                                                ৳{adminStats.balanceStats.lunch}
+                                            </p>
+                                            <p className="text-xs text-gray-500">দুপুর</p>
+                                        </div>
+                                        <div className="bg-purple-50 dark:bg-purple-900/20 rounded-lg p-2 text-center">
+                                            <p className="text-lg font-bold text-purple-600 dark:text-purple-400">
+                                                ৳{adminStats.balanceStats.dinner}
+                                            </p>
+                                            <p className="text-xs text-gray-500">রাত</p>
+                                        </div>
+                                        <div className="bg-primary-50 dark:bg-primary-900/20 rounded-lg p-2 text-center">
+                                            <p className="text-lg font-bold text-primary-600 dark:text-primary-400">
+                                                ৳{adminStats.balanceStats.total}
+                                            </p>
+                                            <p className="text-xs text-gray-500">মোট</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* System Alerts */}
+                            {adminStats.systemAlerts.length > 0 && (
+                                <div className="card border-l-4 border-yellow-500">
+                                    <h2 className="text-lg font-semibold mb-4 flex items-center gap-2 text-gray-800 dark:text-gray-100">
+                                        <FiAlertCircle className="text-yellow-500" />
+                                        সিস্টেম অ্যালার্ট
+                                    </h2>
+                                    <div className="space-y-3">
+                                        {adminStats.systemAlerts.map((alert, idx) => (
+                                            <div
+                                                key={idx}
+                                                className={`flex items-start gap-3 p-3 rounded-lg ${
+                                                    alert.type === 'warning' ? 'bg-yellow-50 dark:bg-yellow-900/20' :
+                                                    alert.type === 'error' ? 'bg-red-50 dark:bg-red-900/20' :
+                                                    alert.type === 'success' ? 'bg-green-50 dark:bg-green-900/20' :
+                                                    'bg-blue-50 dark:bg-blue-900/20'
+                                                }`}
+                                            >
+                                                <div className={`mt-1 ${
+                                                    alert.type === 'warning' ? 'text-yellow-600 dark:text-yellow-400' :
+                                                    alert.type === 'error' ? 'text-red-600 dark:text-red-400' :
+                                                    alert.type === 'success' ? 'text-green-600 dark:text-green-400' :
+                                                    'text-blue-600 dark:text-blue-400'
+                                                }`}>
+                                                    <FiAlertCircle className="w-5 h-5" />
+                                                </div>
+                                                <div className="flex-1">
+                                                    <p className={`font-medium ${
+                                                        alert.type === 'warning' ? 'text-yellow-800 dark:text-yellow-200' :
+                                                        alert.type === 'error' ? 'text-red-800 dark:text-red-200' :
+                                                        alert.type === 'success' ? 'text-green-800 dark:text-green-200' :
+                                                        'text-blue-800 dark:text-blue-200'
+                                                    }`}>
+                                                        {alert.title}
+                                                    </p>
+                                                    <p className="text-sm text-gray-600 dark:text-gray-400">
+                                                        {alert.message}
+                                                    </p>
+                                                </div>
+                                                {alert.actionUrl && (
+                                                    <Link
+                                                        to={alert.actionUrl}
+                                                        className={`text-sm font-medium ${
+                                                            alert.type === 'warning' ? 'text-yellow-700 dark:text-yellow-300 hover:text-yellow-800' :
+                                                            alert.type === 'error' ? 'text-red-700 dark:text-red-300 hover:text-red-800' :
+                                                            alert.type === 'success' ? 'text-green-700 dark:text-green-300 hover:text-green-800' :
+                                                            'text-blue-700 dark:text-blue-300 hover:text-blue-800'
+                                                        }`}
+                                                    >
+                                                        দেখুন →
+                                                    </Link>
+                                                )}
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+                        </>
+                    ) : null}
+                </>
+            )}
+
             {/* Current Month Summary */}
             <div className="card">
                 <h2 className="text-lg font-semibold mb-4 flex items-center gap-2 text-gray-800 dark:text-gray-100">
@@ -545,6 +787,46 @@ const Dashboard: React.FC = () => {
                     </div>
                 </div>
             </RequirePermission>
+
+            {/* Admin Quick Links */}
+            {isAdmin && (
+                <div className="card">
+                    <h2 className="text-lg font-semibold mb-4 flex items-center gap-2 text-gray-800 dark:text-gray-100">
+                        <FiShield className="text-indigo-600" />
+                        এডমিন দ্রুত লিংক
+                    </h2>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        <Link
+                            to="/admin/users"
+                            className="bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-900/20 dark:hover:bg-indigo-900/30 rounded-lg p-4 text-center transition-colors"
+                        >
+                            <FiUsers className="w-6 h-6 mx-auto text-indigo-600 dark:text-indigo-400 mb-2" />
+                            <p className="font-medium text-indigo-700 dark:text-indigo-400">ইউজার ম্যানেজ</p>
+                        </Link>
+                        <Link
+                            to="/admin/holidays"
+                            className="bg-pink-50 hover:bg-pink-100 dark:bg-pink-900/20 dark:hover:bg-pink-900/30 rounded-lg p-4 text-center transition-colors"
+                        >
+                            <FiCalendar className="w-6 h-6 mx-auto text-pink-600 dark:text-pink-400 mb-2" />
+                            <p className="font-medium text-pink-700 dark:text-pink-400">ছুটি ম্যানেজ</p>
+                        </Link>
+                        <Link
+                            to="/manager/month-settings"
+                            className="bg-cyan-50 hover:bg-cyan-100 dark:bg-cyan-900/20 dark:hover:bg-cyan-900/30 rounded-lg p-4 text-center transition-colors"
+                        >
+                            <FiClock className="w-6 h-6 mx-auto text-cyan-600 dark:text-cyan-400 mb-2" />
+                            <p className="font-medium text-cyan-700 dark:text-cyan-400">মাস সেটিংস</p>
+                        </Link>
+                        <Link
+                            to="/manager/users"
+                            className="bg-teal-50 hover:bg-teal-100 dark:bg-teal-900/20 dark:hover:bg-teal-900/30 rounded-lg p-4 text-center transition-colors"
+                        >
+                            <FiUserCheck className="w-6 h-6 mx-auto text-teal-600 dark:text-teal-400 mb-2" />
+                            <p className="font-medium text-teal-700 dark:text-teal-400">ইউজার তালিকা</p>
+                        </Link>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

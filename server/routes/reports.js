@@ -6,7 +6,7 @@ const Breakfast = require('../models/Breakfast');
 const Transaction = require('../models/Transaction');
 const MonthSettings = require('../models/MonthSettings');
 const Holiday = require('../models/Holiday');
-const { protect, isManager } = require('../middleware/auth');
+const { protect, isManager, isAdmin } = require('../middleware/auth');
 const {
     getDatesBetween,
     formatDate,
@@ -1733,6 +1733,212 @@ th { background-color: #f0f0f0; font-weight: bold; }
         res.setHeader('Content-Type', 'application/vnd.ms-excel; charset=utf-8');
         res.setHeader('Content-Disposition', `attachment; filename=report-${year}-${month}-${reportType}.xls`);
         res.send(html);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'সার্ভার এরর' });
+    }
+});
+
+// @route   GET /api/reports/admin-dashboard
+// @desc    Get admin dashboard statistics (Admin+ only)
+// @access  Private (Admin+)
+router.get('/admin-dashboard', protect, isAdmin, async (req, res) => {
+    try {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        // Get user role counts
+        const roleCounts = await User.aggregate([
+            { $match: { isActive: true, isDeleted: { $ne: true } } },
+            { $group: { _id: '$role', count: { $sum: 1 } } }
+        ]);
+
+        const roleStats = {
+            users: 0,
+            managers: 0,
+            admins: 0,
+            superadmins: 0,
+            total: 0
+        };
+
+        roleCounts.forEach(r => {
+            if (r._id === 'user') roleStats.users = r.count;
+            else if (r._id === 'manager') roleStats.managers = r.count;
+            else if (r._id === 'admin') roleStats.admins = r.count;
+            else if (r._id === 'superadmin') roleStats.superadmins = r.count;
+            roleStats.total += r.count;
+        });
+
+        // Get inactive users count
+        const inactiveUsers = await User.countDocuments({ isActive: false });
+
+        // Get users registered this month
+        const thisMonthStart = new Date(today.getFullYear(), today.getMonth(), 1);
+        const newUsersThisMonth = await User.countDocuments({
+            createdAt: { $gte: thisMonthStart }
+        });
+
+        // Get users with frozen balances
+        const frozenBalanceUsers = await User.countDocuments({
+            $or: [
+                { 'balances.breakfast.isFrozen': true },
+                { 'balances.lunch.isFrozen': true },
+                { 'balances.dinner.isFrozen': true }
+            ]
+        });
+
+        // Get total balance in system
+        const balanceAggregation = await User.aggregate([
+            { $match: { isActive: true } },
+            {
+                $group: {
+                    _id: null,
+                    totalBreakfast: { $sum: '$balances.breakfast.amount' },
+                    totalLunch: { $sum: '$balances.lunch.amount' },
+                    totalDinner: { $sum: '$balances.dinner.amount' }
+                }
+            }
+        ]);
+
+        const totalBalances = balanceAggregation[0] || {
+            totalBreakfast: 0,
+            totalLunch: 0,
+            totalDinner: 0
+        };
+
+        // Get transactions summary for this month
+        const monthlyTransactionStats = await Transaction.aggregate([
+            {
+                $match: {
+                    createdAt: { $gte: thisMonthStart }
+                }
+            },
+            {
+                $group: {
+                    _id: '$type',
+                    total: { $sum: { $abs: '$amount' } },
+                    count: { $sum: 1 }
+                }
+            }
+        ]);
+
+        const transactionSummary = {
+            deposits: { amount: 0, count: 0 },
+            deductions: { amount: 0, count: 0 },
+            adjustments: { amount: 0, count: 0 },
+            refunds: { amount: 0, count: 0 }
+        };
+
+        monthlyTransactionStats.forEach(t => {
+            if (t._id === 'deposit') transactionSummary.deposits = { amount: t.total, count: t.count };
+            else if (t._id === 'deduction') transactionSummary.deductions = { amount: t.total, count: t.count };
+            else if (t._id === 'adjustment') transactionSummary.adjustments = { amount: t.total, count: t.count };
+            else if (t._id === 'refund') transactionSummary.refunds = { amount: t.total, count: t.count };
+        });
+
+        // Generate system alerts based on conditions
+        const systemAlerts = [];
+
+        // Alert: Users with very low balance
+        const veryLowBalanceUsers = await User.countDocuments({
+            isActive: true,
+            $expr: {
+                $lt: [
+                    { $add: ['$balances.breakfast.amount', '$balances.lunch.amount', '$balances.dinner.amount'] },
+                    0
+                ]
+            }
+        });
+        if (veryLowBalanceUsers > 0) {
+            systemAlerts.push({
+                type: 'warning',
+                title: 'নেগেটিভ ব্যালেন্স',
+                message: `${veryLowBalanceUsers} জন ইউজারের ব্যালেন্স নেগেটিভ`,
+                actionUrl: '/manager/balance',
+                priority: 'high'
+            });
+        }
+
+        // Alert: Pending breakfast finalization
+        const pendingBreakfasts = await Breakfast.countDocuments({
+            isFinalized: false,
+            date: { $lt: today }
+        });
+        if (pendingBreakfasts > 0) {
+            systemAlerts.push({
+                type: 'info',
+                title: 'নাস্তা পেন্ডিং',
+                message: `${pendingBreakfasts} দিনের নাস্তা ফাইনালাইজ বাকি`,
+                actionUrl: '/manager/breakfast',
+                priority: 'normal'
+            });
+        }
+
+        // Alert: Month not finalized (if past month end)
+        const currentYear = today.getFullYear();
+        const currentMonth = today.getMonth() + 1;
+        const lastMonth = currentMonth === 1 ? 12 : currentMonth - 1;
+        const lastMonthYear = currentMonth === 1 ? currentYear - 1 : currentYear;
+
+        const lastMonthSettings = await MonthSettings.findOne({
+            year: lastMonthYear,
+            month: lastMonth
+        });
+
+        if (lastMonthSettings && !lastMonthSettings.isFinalized) {
+            systemAlerts.push({
+                type: 'warning',
+                title: 'মাস ফাইনালাইজ বাকি',
+                message: `${lastMonthYear}/${lastMonth} মাস এখনো ফাইনালাইজ করা হয়নি`,
+                actionUrl: '/manager/month-settings',
+                priority: 'high'
+            });
+        }
+
+        // Alert: No current month settings
+        const currentMonthSettings = await MonthSettings.findOne({
+            year: currentYear,
+            month: currentMonth
+        });
+
+        if (!currentMonthSettings) {
+            systemAlerts.push({
+                type: 'info',
+                title: 'মাস সেটিংস বাকি',
+                message: `${currentYear}/${currentMonth} মাসের সেটিংস তৈরি করা হয়নি`,
+                actionUrl: '/manager/month-settings',
+                priority: 'normal'
+            });
+        }
+
+        // Alert: Inactive users
+        if (inactiveUsers > 0) {
+            systemAlerts.push({
+                type: 'info',
+                title: 'নিষ্ক্রিয় ইউজার',
+                message: `${inactiveUsers} জন ইউজার নিষ্ক্রিয় আছে`,
+                actionUrl: '/admin/users',
+                priority: 'low'
+            });
+        }
+
+        res.json({
+            roleStats,
+            userStats: {
+                inactive: inactiveUsers,
+                newThisMonth: newUsersThisMonth,
+                frozenBalances: frozenBalanceUsers
+            },
+            balanceStats: {
+                breakfast: totalBalances.totalBreakfast,
+                lunch: totalBalances.totalLunch,
+                dinner: totalBalances.totalDinner,
+                total: totalBalances.totalBreakfast + totalBalances.totalLunch + totalBalances.totalDinner
+            },
+            transactionSummary,
+            systemAlerts,
+            generatedAt: new Date()
+        });
     } catch (error) {
         console.error(error);
         res.status(500).json({ message: 'সার্ভার এরর' });
