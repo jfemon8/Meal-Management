@@ -214,6 +214,12 @@ export const monthSettingsService = {
     carryForwardBalance: async (id) => {
         const response = await api.post(`/month-settings/${id}/carry-forward`);
         return response.data;
+    },
+
+    // Preview month calculation (Manager+)
+    previewCalculation: async (id) => {
+        const response = await api.get(`/month-settings/${id}/preview`);
+        return response.data;
     }
 };
 

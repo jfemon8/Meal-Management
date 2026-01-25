@@ -272,6 +272,190 @@ router.post('/:id/carry-forward', protect, isManager, async (req, res) => {
     }
 });
 
+// @route   GET /api/month-settings/:id/preview
+// @desc    Preview month calculation before finalizing (Manager+ only)
+// @access  Private (Manager+)
+router.get('/:id/preview', protect, isManager, async (req, res) => {
+    try {
+        const settings = await MonthSettings.findById(req.params.id);
+        if (!settings) {
+            return res.status(404).json({ message: 'মাসের সেটিংস পাওয়া যায়নি' });
+        }
+
+        const User = require('../models/User');
+        const Meal = require('../models/Meal');
+        const Breakfast = require('../models/Breakfast');
+        const Holiday = require('../models/Holiday');
+        const { getDatesBetween, formatDate, isDefaultMealOff } = require('../utils/dateUtils');
+
+        // Get holidays for this period
+        const holidays = await Holiday.find({
+            date: { $gte: settings.startDate, $lte: settings.endDate },
+            isActive: true
+        });
+        const holidayDates = holidays.map(h => h.date);
+
+        // Get all active users
+        const users = await User.find({ isActive: true }).select('name email balances');
+
+        // Get all meals for the period
+        const allLunchMeals = await Meal.find({
+            date: { $gte: settings.startDate, $lte: settings.endDate },
+            mealType: 'lunch'
+        });
+
+        const allDinnerMeals = await Meal.find({
+            date: { $gte: settings.startDate, $lte: settings.endDate },
+            mealType: 'dinner'
+        });
+
+        // Get all breakfast costs for the period
+        const allBreakfasts = await Breakfast.find({
+            date: { $gte: settings.startDate, $lte: settings.endDate }
+        });
+
+        const dates = getDatesBetween(settings.startDate, settings.endDate);
+
+        // Calculate for each user
+        const userPreviews = users.map(user => {
+            const userLunchMeals = allLunchMeals.filter(m => m.user.toString() === user._id.toString());
+            const userDinnerMeals = allDinnerMeals.filter(m => m.user.toString() === user._id.toString());
+
+            let totalLunchMeals = 0;
+            let totalDinnerMeals = 0;
+
+            dates.forEach(date => {
+                const dateStr = formatDate(date);
+                const isDefaultOff = isDefaultMealOff(date, holidayDates);
+
+                // Lunch calculation
+                const lunchMeal = userLunchMeals.find(m => formatDate(m.date) === dateStr);
+                if (lunchMeal) {
+                    if (lunchMeal.isOn) totalLunchMeals += lunchMeal.count;
+                } else if (!isDefaultOff) {
+                    totalLunchMeals++;
+                }
+
+                // Dinner calculation
+                const dinnerMeal = userDinnerMeals.find(m => formatDate(m.date) === dateStr);
+                if (dinnerMeal) {
+                    if (dinnerMeal.isOn) totalDinnerMeals += dinnerMeal.count;
+                } else if (!isDefaultOff) {
+                    totalDinnerMeals++;
+                }
+            });
+
+            // Calculate breakfast cost for user
+            let breakfastCost = 0;
+            allBreakfasts.forEach(b => {
+                const participation = b.participants.find(p => p.user.toString() === user._id.toString());
+                if (participation) {
+                    breakfastCost += participation.cost;
+                }
+            });
+
+            // Calculate charges
+            const lunchCharge = totalLunchMeals * (settings.lunchRate || 0);
+            const dinnerCharge = totalDinnerMeals * (settings.dinnerRate || 0);
+            const totalCharge = lunchCharge + dinnerCharge + breakfastCost;
+
+            // Current balances
+            const lunchBalance = user.balances?.lunch?.amount || 0;
+            const dinnerBalance = user.balances?.dinner?.amount || 0;
+            const breakfastBalance = user.balances?.breakfast?.amount || 0;
+            const totalBalance = lunchBalance + dinnerBalance + breakfastBalance;
+
+            // Due/Advance calculation
+            const lunchDue = lunchCharge - lunchBalance;
+            const dinnerDue = dinnerCharge - dinnerBalance;
+            const breakfastDue = breakfastCost - breakfastBalance;
+            const totalDue = totalCharge - totalBalance;
+
+            return {
+                userId: user._id,
+                name: user.name,
+                email: user.email,
+                lunch: {
+                    meals: totalLunchMeals,
+                    charge: lunchCharge,
+                    balance: lunchBalance,
+                    due: lunchDue,
+                    status: lunchDue > 0 ? 'due' : lunchDue < 0 ? 'advance' : 'settled'
+                },
+                dinner: {
+                    meals: totalDinnerMeals,
+                    charge: dinnerCharge,
+                    balance: dinnerBalance,
+                    due: dinnerDue,
+                    status: dinnerDue > 0 ? 'due' : dinnerDue < 0 ? 'advance' : 'settled'
+                },
+                breakfast: {
+                    cost: breakfastCost,
+                    balance: breakfastBalance,
+                    due: breakfastDue,
+                    status: breakfastDue > 0 ? 'due' : breakfastDue < 0 ? 'advance' : 'settled'
+                },
+                total: {
+                    charge: totalCharge,
+                    balance: totalBalance,
+                    due: totalDue,
+                    status: totalDue > 0 ? 'due' : totalDue < 0 ? 'advance' : 'settled'
+                }
+            };
+        });
+
+        // Calculate grand totals
+        const grandTotals = {
+            totalUsers: users.length,
+            lunch: {
+                totalMeals: userPreviews.reduce((sum, u) => sum + u.lunch.meals, 0),
+                totalCharge: userPreviews.reduce((sum, u) => sum + u.lunch.charge, 0),
+                totalBalance: userPreviews.reduce((sum, u) => sum + u.lunch.balance, 0),
+                totalDue: userPreviews.reduce((sum, u) => sum + u.lunch.due, 0)
+            },
+            dinner: {
+                totalMeals: userPreviews.reduce((sum, u) => sum + u.dinner.meals, 0),
+                totalCharge: userPreviews.reduce((sum, u) => sum + u.dinner.charge, 0),
+                totalBalance: userPreviews.reduce((sum, u) => sum + u.dinner.balance, 0),
+                totalDue: userPreviews.reduce((sum, u) => sum + u.dinner.due, 0)
+            },
+            breakfast: {
+                totalCost: userPreviews.reduce((sum, u) => sum + u.breakfast.cost, 0),
+                totalBalance: userPreviews.reduce((sum, u) => sum + u.breakfast.balance, 0),
+                totalDue: userPreviews.reduce((sum, u) => sum + u.breakfast.due, 0)
+            },
+            overall: {
+                totalCharge: userPreviews.reduce((sum, u) => sum + u.total.charge, 0),
+                totalBalance: userPreviews.reduce((sum, u) => sum + u.total.balance, 0),
+                totalDue: userPreviews.reduce((sum, u) => sum + u.total.due, 0),
+                usersWithDue: userPreviews.filter(u => u.total.due > 0).length,
+                usersWithAdvance: userPreviews.filter(u => u.total.due < 0).length,
+                usersSettled: userPreviews.filter(u => u.total.due === 0).length
+            }
+        };
+
+        res.json({
+            settings: {
+                _id: settings._id,
+                year: settings.year,
+                month: settings.month,
+                startDate: settings.startDate,
+                endDate: settings.endDate,
+                lunchRate: settings.lunchRate,
+                dinnerRate: settings.dinnerRate,
+                totalDays: dates.length,
+                isFinalized: settings.isFinalized
+            },
+            grandTotals,
+            userPreviews: userPreviews.sort((a, b) => b.total.due - a.total.due), // Sort by due (highest first)
+            holidays: holidays.map(h => ({ date: formatDate(h.date), name: h.nameBn }))
+        });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'সার্ভার এরর' });
+    }
+});
+
 // @route   GET /api/month-settings/current
 // @desc    Get current month settings
 // @access  Private
