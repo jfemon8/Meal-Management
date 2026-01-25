@@ -1567,4 +1567,176 @@ router.get('/manager-dashboard', protect, isManager, async (req, res) => {
     }
 });
 
+// @route   GET /api/reports/export/excel
+// @desc    Export report as Excel (Manager+ only)
+// @access  Private (Manager+)
+router.get('/export/excel', protect, isManager, async (req, res) => {
+    try {
+        const { year, month, reportType = 'all-users' } = req.query;
+
+        // Get month settings
+        let monthSettings = await MonthSettings.findOne({
+            year: parseInt(year),
+            month: parseInt(month)
+        });
+
+        if (!monthSettings) {
+            const { startDate, endDate } = getDefaultMonthRange(parseInt(year), parseInt(month));
+            monthSettings = { startDate, endDate, lunchRate: 0, dinnerRate: 0 };
+        }
+
+        const holidays = await Holiday.find({
+            date: { $gte: monthSettings.startDate, $lte: monthSettings.endDate },
+            isActive: true
+        });
+        const holidayDates = holidays.map(h => h.date);
+
+        const users = await User.find({ isActive: true, isDeleted: { $ne: true } })
+            .select('name email phone balances');
+
+        const dates = getDatesBetween(monthSettings.startDate, monthSettings.endDate);
+        const allMeals = await Meal.find({
+            date: { $gte: monthSettings.startDate, $lte: monthSettings.endDate }
+        });
+
+        // Get breakfast data
+        const allBreakfasts = await Breakfast.find({
+            date: { $gte: monthSettings.startDate, $lte: monthSettings.endDate },
+            isReversed: { $ne: true }
+        });
+
+        // Build Excel data
+        const excelData = [];
+
+        users.forEach(user => {
+            let lunchCount = 0;
+            let dinnerCount = 0;
+
+            dates.forEach(date => {
+                const dateStr = formatDate(date);
+                const isDefaultOff = isDefaultMealOff(date, holidayDates);
+
+                const lunchMeal = allMeals.find(m =>
+                    m.user.toString() === user._id.toString() &&
+                    m.mealType === 'lunch' &&
+                    formatDate(m.date) === dateStr
+                );
+                if (lunchMeal) {
+                    if (lunchMeal.isOn) lunchCount += lunchMeal.count;
+                } else if (!isDefaultOff) {
+                    lunchCount++;
+                }
+
+                const dinnerMeal = allMeals.find(m =>
+                    m.user.toString() === user._id.toString() &&
+                    m.mealType === 'dinner' &&
+                    formatDate(m.date) === dateStr
+                );
+                if (dinnerMeal) {
+                    if (dinnerMeal.isOn) dinnerCount += dinnerMeal.count;
+                } else if (!isDefaultOff) {
+                    dinnerCount++;
+                }
+            });
+
+            // Calculate breakfast cost
+            let breakfastCost = 0;
+            allBreakfasts.forEach(b => {
+                const participation = b.participants.find(p => p.user.toString() === user._id.toString());
+                if (participation) breakfastCost += participation.cost;
+            });
+
+            const lunchCharge = lunchCount * (monthSettings.lunchRate || 0);
+            const dinnerCharge = dinnerCount * (monthSettings.dinnerRate || 0);
+            const lunchDue = Math.max(0, lunchCharge - user.balances.lunch.amount);
+            const dinnerDue = Math.max(0, dinnerCharge - user.balances.dinner.amount);
+            const breakfastDue = Math.max(0, breakfastCost - user.balances.breakfast.amount);
+            const totalCharge = lunchCharge + dinnerCharge + breakfastCost;
+            const totalBalance = user.balances.lunch.amount + user.balances.dinner.amount + user.balances.breakfast.amount;
+            const totalDue = lunchDue + dinnerDue + breakfastDue;
+
+            const userData = {
+                'নাম': user.name,
+                'ইমেইল': user.email,
+                'ফোন': user.phone || '',
+                'দুপুর মিল': lunchCount,
+                'দুপুর চার্জ': lunchCharge,
+                'দুপুর ব্যালেন্স': user.balances.lunch.amount,
+                'দুপুর বকেয়া': lunchDue,
+                'রাত মিল': dinnerCount,
+                'রাত চার্জ': dinnerCharge,
+                'রাত ব্যালেন্স': user.balances.dinner.amount,
+                'রাত বকেয়া': dinnerDue,
+                'নাস্তা খরচ': breakfastCost,
+                'নাস্তা ব্যালেন্স': user.balances.breakfast.amount,
+                'নাস্তা বকেয়া': breakfastDue,
+                'মোট চার্জ': totalCharge,
+                'মোট ব্যালেন্স': totalBalance,
+                'মোট বকেয়া': totalDue
+            };
+
+            if (reportType === 'defaulters') {
+                if (totalDue > 0) {
+                    excelData.push(userData);
+                }
+            } else {
+                excelData.push(userData);
+            }
+        });
+
+        // Sort by name for all-users, by due for defaulters
+        if (reportType === 'defaulters') {
+            excelData.sort((a, b) => b['মোট বকেয়া'] - a['মোট বকেয়া']);
+        } else {
+            excelData.sort((a, b) => a['নাম'].localeCompare(b['নাম'], 'bn'));
+        }
+
+        // Generate simple HTML table format that Excel can open
+        let html = `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel">
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style>
+table { border-collapse: collapse; }
+th, td { border: 1px solid black; padding: 5px; text-align: left; }
+th { background-color: #f0f0f0; font-weight: bold; }
+.number { text-align: right; }
+</style>
+</head>
+<body>
+<h2>মিল ম্যানেজমেন্ট সিস্টেম</h2>
+<h3>${reportType === 'defaulters' ? 'বকেয়া তালিকা' : 'সব ইউজার রিপোর্ট'} - ${year}/${month}</h3>
+<p>তৈরি: ${new Date().toLocaleString('bn-BD')}</p>
+<table>
+<thead><tr>`;
+
+        // Headers
+        const headers = Object.keys(excelData[0] || {});
+        headers.forEach(h => {
+            html += `<th>${h}</th>`;
+        });
+        html += '</tr></thead><tbody>';
+
+        // Data rows
+        excelData.forEach(row => {
+            html += '<tr>';
+            headers.forEach(h => {
+                const value = row[h];
+                const isNumber = typeof value === 'number';
+                html += `<td class="${isNumber ? 'number' : ''}">${value}</td>`;
+            });
+            html += '</tr>';
+        });
+
+        html += '</tbody></table></body></html>';
+
+        // Set headers for Excel download
+        res.setHeader('Content-Type', 'application/vnd.ms-excel; charset=utf-8');
+        res.setHeader('Content-Disposition', `attachment; filename=report-${year}-${month}-${reportType}.xls`);
+        res.send(html);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'সার্ভার এরর' });
+    }
+});
+
 module.exports = router;

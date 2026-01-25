@@ -363,6 +363,23 @@ export const reportService = {
         window.URL.revokeObjectURL(url);
     },
 
+    // Export as Excel (Manager+)
+    exportExcel: async (year, month, reportType = 'all-users') => {
+        const response = await api.get('/reports/export/excel', {
+            params: { year, month, reportType },
+            responseType: 'blob'
+        });
+        // Create download link
+        const url = window.URL.createObjectURL(new Blob([response.data]));
+        const link = document.createElement('a');
+        link.href = url;
+        link.setAttribute('download', `report-${year}-${month}-${reportType}.xls`);
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        window.URL.revokeObjectURL(url);
+    },
+
     // Export as JSON for PDF (Manager+)
     getExportData: async (year, month, reportType = 'all-users') => {
         const response = await api.get('/reports/export/json', {
