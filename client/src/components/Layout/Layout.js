@@ -61,6 +61,7 @@ const Layout = () => {
     const adminMenuItems = [
         { path: '/admin/users', icon: FiUserCheck, label: 'ইউজার ম্যানেজ' },
         { path: '/admin/groups', icon: FiUsers, label: 'গ্রুপ ম্যানেজ' },
+        { path: '/admin/manager-activity', icon: FiClipboard, label: 'ম্যানেজার অ্যাক্টিভিটি' },
         { path: '/admin/holidays', icon: FiSun, label: 'ছুটি ম্যানেজ' },
         { path: '/admin/audit-logs', icon: FiActivity, label: 'অডিট লগ' },
     ];

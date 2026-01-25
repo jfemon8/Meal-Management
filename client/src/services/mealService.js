@@ -820,5 +820,31 @@ export const auditLogService = {
     undoAction: async (id) => {
         const response = await api.post(`/audit-logs/${id}/undo`);
         return response.data;
+    },
+
+    // Get list of all managers (Admin+)
+    getManagersList: async () => {
+        const response = await api.get('/audit-logs/managers/list');
+        return response.data;
+    },
+
+    // Get all managers' activity (Admin+)
+    getManagersActivity: async (params = {}) => {
+        const response = await api.get('/audit-logs/managers/activity', { params });
+        return response.data;
+    },
+
+    // Get managers' activity summary (Admin+)
+    getManagersSummary: async (days = 30, managerId = null) => {
+        const params = { days };
+        if (managerId) params.managerId = managerId;
+        const response = await api.get('/audit-logs/managers/summary', { params });
+        return response.data;
+    },
+
+    // Get specific manager's activity (Admin+)
+    getManagerActivity: async (managerId, params = {}) => {
+        const response = await api.get(`/audit-logs/managers/${managerId}/activity`, { params });
+        return response.data;
     }
 };

@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const AuditLog = require('../models/AuditLog');
+const User = require('../models/User');
 const { protect, isAdmin, isSuperAdmin } = require('../middleware/auth');
 
 /**
@@ -293,6 +294,311 @@ router.post('/:id/undo', protect, isSuperAdmin, async (req, res) => {
     } catch (error) {
         console.error('Undo action error:', error);
         res.status(500).json({ message: 'রিভার্স করতে সমস্যা হয়েছে' });
+    }
+});
+
+/**
+ * @route   GET /api/audit-logs/managers/list
+ * @desc    Get list of all managers (system role + group managers)
+ * @access  Admin+
+ */
+router.get('/managers/list', protect, isAdmin, async (req, res) => {
+    try {
+        // Get users who are either system managers or group managers
+        const managers = await User.find({
+            $or: [
+                { role: 'manager' },
+                { isGroupManager: true }
+            ],
+            isActive: true
+        })
+        .select('name email role isGroupManager group')
+        .populate('group', 'name')
+        .lean();
+
+        res.json(managers);
+    } catch (error) {
+        console.error('Get managers list error:', error);
+        res.status(500).json({ message: 'ম্যানেজার লিস্ট লোড করতে সমস্যা হয়েছে' });
+    }
+});
+
+/**
+ * @route   GET /api/audit-logs/managers/activity
+ * @desc    Get all managers' activity logs
+ * @access  Admin+
+ */
+router.get('/managers/activity', protect, isAdmin, async (req, res) => {
+    try {
+        const {
+            page = 1,
+            limit = 50,
+            managerId,
+            category,
+            action,
+            startDate,
+            endDate
+        } = req.query;
+
+        // Get all manager user IDs
+        let managerIds = [];
+        if (managerId) {
+            managerIds = [managerId];
+        } else {
+            const managers = await User.find({
+                $or: [
+                    { role: 'manager' },
+                    { isGroupManager: true }
+                ]
+            }).select('_id');
+            managerIds = managers.map(m => m._id);
+        }
+
+        const query = {
+            user: { $in: managerIds }
+        };
+
+        if (category) query.category = category;
+        if (action) query.action = { $regex: action, $options: 'i' };
+
+        if (startDate || endDate) {
+            query.createdAt = {};
+            if (startDate) query.createdAt.$gte = new Date(startDate);
+            if (endDate) query.createdAt.$lte = new Date(endDate);
+        }
+
+        const logs = await AuditLog.find(query)
+            .sort({ createdAt: -1 })
+            .skip((parseInt(page) - 1) * parseInt(limit))
+            .limit(parseInt(limit))
+            .populate('user', 'name email role isGroupManager')
+            .lean();
+
+        const total = await AuditLog.countDocuments(query);
+
+        res.json({
+            logs,
+            total,
+            page: parseInt(page),
+            pages: Math.ceil(total / parseInt(limit))
+        });
+    } catch (error) {
+        console.error('Get managers activity error:', error);
+        res.status(500).json({ message: 'ম্যানেজার অ্যাক্টিভিটি লোড করতে সমস্যা হয়েছে' });
+    }
+});
+
+/**
+ * @route   GET /api/audit-logs/managers/summary
+ * @desc    Get managers' activity summary with statistics
+ * @access  Admin+
+ */
+router.get('/managers/summary', protect, isAdmin, async (req, res) => {
+    try {
+        const { days = 30, managerId } = req.query;
+
+        // Get all manager user IDs
+        let managerIds = [];
+        if (managerId) {
+            managerIds = [managerId];
+        } else {
+            const managers = await User.find({
+                $or: [
+                    { role: 'manager' },
+                    { isGroupManager: true }
+                ]
+            }).select('_id');
+            managerIds = managers.map(m => m._id);
+        }
+
+        const startDate = new Date();
+        startDate.setDate(startDate.getDate() - parseInt(days));
+
+        // Get activity breakdown by manager
+        const activityByManager = await AuditLog.aggregate([
+            {
+                $match: {
+                    user: { $in: managerIds },
+                    createdAt: { $gte: startDate }
+                }
+            },
+            {
+                $group: {
+                    _id: '$user',
+                    totalActions: { $sum: 1 },
+                    categories: { $push: '$category' },
+                    lastActivity: { $max: '$createdAt' }
+                }
+            },
+            {
+                $lookup: {
+                    from: 'users',
+                    localField: '_id',
+                    foreignField: '_id',
+                    as: 'userInfo'
+                }
+            },
+            { $unwind: '$userInfo' },
+            {
+                $project: {
+                    _id: 1,
+                    name: '$userInfo.name',
+                    email: '$userInfo.email',
+                    role: '$userInfo.role',
+                    isGroupManager: '$userInfo.isGroupManager',
+                    totalActions: 1,
+                    lastActivity: 1,
+                    categories: 1
+                }
+            },
+            { $sort: { totalActions: -1 } }
+        ]);
+
+        // Process categories count for each manager
+        const managersWithStats = activityByManager.map(manager => {
+            const categoryCounts = {};
+            manager.categories.forEach(cat => {
+                categoryCounts[cat] = (categoryCounts[cat] || 0) + 1;
+            });
+            return {
+                ...manager,
+                categoryCounts,
+                categories: undefined
+            };
+        });
+
+        // Get overall category breakdown
+        const categoryBreakdown = await AuditLog.aggregate([
+            {
+                $match: {
+                    user: { $in: managerIds },
+                    createdAt: { $gte: startDate }
+                }
+            },
+            {
+                $group: {
+                    _id: '$category',
+                    count: { $sum: 1 }
+                }
+            },
+            { $sort: { count: -1 } }
+        ]);
+
+        // Get action breakdown
+        const actionBreakdown = await AuditLog.aggregate([
+            {
+                $match: {
+                    user: { $in: managerIds },
+                    createdAt: { $gte: startDate }
+                }
+            },
+            {
+                $group: {
+                    _id: '$action',
+                    count: { $sum: 1 }
+                }
+            },
+            { $sort: { count: -1 } },
+            { $limit: 10 }
+        ]);
+
+        // Get daily activity trend
+        const dailyTrend = await AuditLog.aggregate([
+            {
+                $match: {
+                    user: { $in: managerIds },
+                    createdAt: { $gte: startDate }
+                }
+            },
+            {
+                $group: {
+                    _id: { $dateToString: { format: '%Y-%m-%d', date: '$createdAt' } },
+                    count: { $sum: 1 }
+                }
+            },
+            { $sort: { _id: 1 } }
+        ]);
+
+        // Get total counts
+        const totalActions = await AuditLog.countDocuments({
+            user: { $in: managerIds },
+            createdAt: { $gte: startDate }
+        });
+
+        const totalManagers = managerIds.length;
+        const activeManagers = managersWithStats.length;
+
+        res.json({
+            summary: {
+                totalActions,
+                totalManagers,
+                activeManagers,
+                period: `${days} দিন`
+            },
+            managers: managersWithStats,
+            categoryBreakdown,
+            actionBreakdown,
+            dailyTrend
+        });
+    } catch (error) {
+        console.error('Get managers summary error:', error);
+        res.status(500).json({ message: 'সামারি লোড করতে সমস্যা হয়েছে' });
+    }
+});
+
+/**
+ * @route   GET /api/audit-logs/managers/:managerId/activity
+ * @desc    Get specific manager's activity log
+ * @access  Admin+
+ */
+router.get('/managers/:managerId/activity', protect, isAdmin, async (req, res) => {
+    try {
+        const { page = 1, limit = 50, category, startDate, endDate } = req.query;
+
+        const manager = await User.findById(req.params.managerId).select('name email role isGroupManager');
+        if (!manager) {
+            return res.status(404).json({ message: 'ম্যানেজার পাওয়া যায়নি' });
+        }
+
+        const query = { user: req.params.managerId };
+
+        if (category) query.category = category;
+        if (startDate || endDate) {
+            query.createdAt = {};
+            if (startDate) query.createdAt.$gte = new Date(startDate);
+            if (endDate) query.createdAt.$lte = new Date(endDate);
+        }
+
+        const logs = await AuditLog.find(query)
+            .sort({ createdAt: -1 })
+            .skip((parseInt(page) - 1) * parseInt(limit))
+            .limit(parseInt(limit))
+            .lean();
+
+        const total = await AuditLog.countDocuments(query);
+
+        // Get manager's activity stats
+        const stats = await AuditLog.aggregate([
+            { $match: { user: manager._id } },
+            {
+                $group: {
+                    _id: '$category',
+                    count: { $sum: 1 }
+                }
+            }
+        ]);
+
+        res.json({
+            manager,
+            logs,
+            total,
+            page: parseInt(page),
+            pages: Math.ceil(total / parseInt(limit)),
+            stats
+        });
+    } catch (error) {
+        console.error('Get manager activity error:', error);
+        res.status(500).json({ message: 'ম্যানেজার অ্যাক্টিভিটি লোড করতে সমস্যা হয়েছে' });
     }
 });
 
