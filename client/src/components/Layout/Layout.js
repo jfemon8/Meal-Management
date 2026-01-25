@@ -67,6 +67,7 @@ const Layout = () => {
         { path: '/admin/manager-activity', icon: FiClipboard, label: 'ম্যানেজার অ্যাক্টিভিটি' },
         { path: '/admin/holidays', icon: FiSun, label: 'ছুটি ম্যানেজ' },
         { path: '/admin/audit-logs', icon: FiActivity, label: 'অডিট লগ' },
+        { path: '/admin/settings', icon: FiSettings, label: 'সিস্টেম সেটিংস' },
     ];
 
     // SuperAdmin menu - visible only to SuperAdmin

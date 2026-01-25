@@ -45,6 +45,7 @@ app.use('/api/super-admin', require('./routes/superAdmin'));
 app.use('/api/feature-flags', require('./routes/featureFlags'));
 app.use('/api/notifications', require('./routes/notifications'));
 app.use('/api/audit-logs', require('./routes/auditLogs'));
+app.use('/api/backup', require('./routes/backup'));
 
 // Error handling middleware
 app.use((err, req, res, next) => {

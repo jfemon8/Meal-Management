@@ -10,7 +10,10 @@ import {
     FiUpload,
     FiAlertTriangle,
     FiCheck,
-    FiActivity
+    FiActivity,
+    FiClock,
+    FiFile,
+    FiX
 } from 'react-icons/fi';
 import api from '../../services/api';
 import toast from 'react-hot-toast';
@@ -37,18 +40,29 @@ interface SystemStats {
     };
 }
 
+interface Backup {
+    filename: string;
+    createdAt: string;
+    size: number;
+    sizeFormatted: string;
+    collections: Record<string, number>;
+    createdBy: string;
+}
+
 const SystemSettings: React.FC = () => {
     const [stats, setStats] = useState<SystemStats | null>(null);
+    const [backups, setBackups] = useState<Backup[]>([]);
     const [loading, setLoading] = useState(true);
+    const [backupsLoading, setBackupsLoading] = useState(false);
     const [actionLoading, setActionLoading] = useState<string | null>(null);
+    const [showBackupList, setShowBackupList] = useState(false);
+    const [showRestoreConfirm, setShowRestoreConfirm] = useState<Backup | null>(null);
 
     const fetchStats = async () => {
         setLoading(true);
         try {
-            // Fetch system stats - you'll need to create this endpoint
-            const [usersRes, statsRes] = await Promise.all([
+            const [usersRes] = await Promise.all([
                 api.get('/users'),
-                api.get('/audit-logs/summary').catch(() => ({ data: { summary: {} } }))
             ]);
 
             const users = usersRes.data;
@@ -60,7 +74,7 @@ const SystemSettings: React.FC = () => {
             setStats({
                 database: {
                     collections: 10,
-                    totalDocuments: users.length * 50, // Estimate
+                    totalDocuments: users.length * 50,
                     dbSize: 'N/A'
                 },
                 users: {
@@ -85,14 +99,31 @@ const SystemSettings: React.FC = () => {
         }
     };
 
+    const fetchBackups = async () => {
+        setBackupsLoading(true);
+        try {
+            const response = await api.get('/backup');
+            setBackups(response.data.backups || []);
+        } catch (error: any) {
+            toast.error('ব্যাকআপ তালিকা লোড করতে ব্যর্থ');
+        } finally {
+            setBackupsLoading(false);
+        }
+    };
+
     useEffect(() => {
         fetchStats();
     }, []);
 
+    useEffect(() => {
+        if (showBackupList) {
+            fetchBackups();
+        }
+    }, [showBackupList]);
+
     const handleClearCache = async () => {
         setActionLoading('cache');
         try {
-            // Simulated - add actual endpoint
             await new Promise(resolve => setTimeout(resolve, 1000));
             toast.success('ক্যাশ পরিষ্কার করা হয়েছে');
         } catch (error) {
@@ -105,11 +136,77 @@ const SystemSettings: React.FC = () => {
     const handleBackupDatabase = async () => {
         setActionLoading('backup');
         try {
-            // Simulated - add actual endpoint
-            await new Promise(resolve => setTimeout(resolve, 2000));
+            const response = await api.post('/backup');
             toast.success('ডেটাবেস ব্যাকআপ সম্পন্ন');
-        } catch (error) {
-            toast.error('ব্যাকআপ করতে ব্যর্থ');
+            if (showBackupList) {
+                fetchBackups();
+            }
+        } catch (error: any) {
+            toast.error(error.response?.data?.message || 'ব্যাকআপ করতে ব্যর্থ');
+        } finally {
+            setActionLoading(null);
+        }
+    };
+
+    const handleDownloadBackup = async (filename: string) => {
+        try {
+            const response = await api.get(`/backup/${filename}`, {
+                responseType: 'blob'
+            });
+
+            const url = window.URL.createObjectURL(new Blob([response.data]));
+            const link = document.createElement('a');
+            link.href = url;
+            link.setAttribute('download', filename);
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            window.URL.revokeObjectURL(url);
+
+            toast.success('ব্যাকআপ ডাউনলোড হচ্ছে');
+        } catch (error: any) {
+            toast.error('ডাউনলোড করতে ব্যর্থ');
+        }
+    };
+
+    const handleDeleteBackup = async (filename: string) => {
+        if (!window.confirm('এই ব্যাকআপটি মুছে ফেলতে চান?')) return;
+
+        try {
+            await api.delete(`/backup/${filename}`);
+            toast.success('ব্যাকআপ মুছে ফেলা হয়েছে');
+            fetchBackups();
+        } catch (error: any) {
+            toast.error('মুছতে ব্যর্থ');
+        }
+    };
+
+    const handleRestoreBackup = async (backup: Backup) => {
+        setActionLoading('restore');
+        try {
+            await api.post(`/backup/restore/${backup.filename}`, {
+                confirmRestore: 'RESTORE_DATABASE'
+            });
+            toast.success('ডেটাবেস রিস্টোর সম্পন্ন');
+            setShowRestoreConfirm(null);
+            fetchStats();
+        } catch (error: any) {
+            toast.error(error.response?.data?.message || 'রিস্টোর করতে ব্যর্থ');
+        } finally {
+            setActionLoading(null);
+        }
+    };
+
+    const handleClearOldBackups = async () => {
+        if (!window.confirm('৩০ দিনের পুরানো ব্যাকআপ মুছে ফেলা হবে। আপনি কি নিশ্চিত?')) return;
+
+        setActionLoading('cleanBackups');
+        try {
+            const response = await api.delete('/backup/cleanup/old?days=30');
+            toast.success(response.data.message);
+            fetchBackups();
+        } catch (error: any) {
+            toast.error('ক্লিনআপ করতে ব্যর্থ');
         } finally {
             setActionLoading(null);
         }
@@ -252,13 +349,137 @@ const SystemSettings: React.FC = () => {
                 </div>
             </div>
 
+            {/* Backup Management */}
+            <div className="card">
+                <div className="flex items-center justify-between mb-4">
+                    <h2 className="text-lg font-semibold text-gray-800 dark:text-gray-100 flex items-center gap-2">
+                        <FiHardDrive className="text-green-500" />
+                        ব্যাকআপ ম্যানেজমেন্ট
+                    </h2>
+                    <div className="flex items-center gap-2">
+                        <button
+                            onClick={() => setShowBackupList(!showBackupList)}
+                            className="btn btn-outline btn-sm"
+                        >
+                            {showBackupList ? 'লুকান' : 'ব্যাকআপ তালিকা'}
+                        </button>
+                        <button
+                            onClick={handleBackupDatabase}
+                            disabled={actionLoading === 'backup'}
+                            className="btn btn-primary btn-sm flex items-center gap-2"
+                        >
+                            {actionLoading === 'backup' ? (
+                                <FiRefreshCw className="w-4 h-4 animate-spin" />
+                            ) : (
+                                <FiDownload className="w-4 h-4" />
+                            )}
+                            নতুন ব্যাকআপ
+                        </button>
+                    </div>
+                </div>
+
+                {showBackupList && (
+                    <div className="border dark:border-gray-700 rounded-lg overflow-hidden">
+                        {backupsLoading ? (
+                            <div className="p-8 text-center">
+                                <FiRefreshCw className="w-8 h-8 animate-spin mx-auto text-gray-400" />
+                                <p className="mt-2 text-gray-500">লোড হচ্ছে...</p>
+                            </div>
+                        ) : backups.length === 0 ? (
+                            <div className="p-8 text-center text-gray-500">
+                                কোনো ব্যাকআপ নেই
+                            </div>
+                        ) : (
+                            <>
+                                <div className="overflow-x-auto">
+                                    <table className="w-full">
+                                        <thead className="bg-gray-50 dark:bg-gray-800">
+                                            <tr>
+                                                <th className="text-left px-4 py-3 text-sm font-medium text-gray-600 dark:text-gray-400">ফাইল</th>
+                                                <th className="text-left px-4 py-3 text-sm font-medium text-gray-600 dark:text-gray-400">তারিখ</th>
+                                                <th className="text-left px-4 py-3 text-sm font-medium text-gray-600 dark:text-gray-400">সাইজ</th>
+                                                <th className="text-left px-4 py-3 text-sm font-medium text-gray-600 dark:text-gray-400">তৈরি করেছেন</th>
+                                                <th className="text-right px-4 py-3 text-sm font-medium text-gray-600 dark:text-gray-400">অ্যাকশন</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y dark:divide-gray-700">
+                                            {backups.map((backup) => (
+                                                <tr key={backup.filename} className="hover:bg-gray-50 dark:hover:bg-gray-800/50">
+                                                    <td className="px-4 py-3">
+                                                        <div className="flex items-center gap-2">
+                                                            <FiFile className="text-gray-400" />
+                                                            <span className="text-sm font-mono text-gray-700 dark:text-gray-300">
+                                                                {backup.filename.substring(0, 25)}...
+                                                            </span>
+                                                        </div>
+                                                    </td>
+                                                    <td className="px-4 py-3 text-sm text-gray-600 dark:text-gray-400">
+                                                        {new Date(backup.createdAt).toLocaleString('bn-BD')}
+                                                    </td>
+                                                    <td className="px-4 py-3 text-sm text-gray-600 dark:text-gray-400">
+                                                        {backup.sizeFormatted}
+                                                    </td>
+                                                    <td className="px-4 py-3 text-sm text-gray-600 dark:text-gray-400">
+                                                        {backup.createdBy}
+                                                    </td>
+                                                    <td className="px-4 py-3">
+                                                        <div className="flex items-center justify-end gap-2">
+                                                            <button
+                                                                onClick={() => handleDownloadBackup(backup.filename)}
+                                                                className="p-2 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg"
+                                                                title="ডাউনলোড"
+                                                            >
+                                                                <FiDownload className="w-4 h-4" />
+                                                            </button>
+                                                            <button
+                                                                onClick={() => setShowRestoreConfirm(backup)}
+                                                                className="p-2 text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-900/20 rounded-lg"
+                                                                title="রিস্টোর"
+                                                            >
+                                                                <FiUpload className="w-4 h-4" />
+                                                            </button>
+                                                            <button
+                                                                onClick={() => handleDeleteBackup(backup.filename)}
+                                                                className="p-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg"
+                                                                title="মুছুন"
+                                                            >
+                                                                <FiTrash2 className="w-4 h-4" />
+                                                            </button>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                                <div className="p-4 border-t dark:border-gray-700 flex justify-between items-center">
+                                    <span className="text-sm text-gray-500">মোট {backups.length} টি ব্যাকআপ</span>
+                                    <button
+                                        onClick={handleClearOldBackups}
+                                        disabled={actionLoading === 'cleanBackups'}
+                                        className="text-sm text-red-600 hover:underline flex items-center gap-1"
+                                    >
+                                        {actionLoading === 'cleanBackups' ? (
+                                            <FiRefreshCw className="w-3 h-3 animate-spin" />
+                                        ) : (
+                                            <FiTrash2 className="w-3 h-3" />
+                                        )}
+                                        পুরাতন ব্যাকআপ মুছুন
+                                    </button>
+                                </div>
+                            </>
+                        )}
+                    </div>
+                )}
+            </div>
+
             {/* Maintenance Actions */}
             <div className="card">
                 <h2 className="text-lg font-semibold text-gray-800 dark:text-gray-100 mb-4 flex items-center gap-2">
                     <FiAlertTriangle className="text-yellow-500" />
                     মেইনটেন্যান্স অ্যাকশন
                 </h2>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <button
                         onClick={handleClearCache}
                         disabled={actionLoading === 'cache'}
@@ -273,19 +494,6 @@ const SystemSettings: React.FC = () => {
                     </button>
 
                     <button
-                        onClick={handleBackupDatabase}
-                        disabled={actionLoading === 'backup'}
-                        className="flex items-center justify-center gap-2 p-4 border-2 border-dashed border-gray-200 dark:border-gray-700 rounded-lg hover:border-green-500 hover:bg-green-50 dark:hover:bg-green-900/20 transition-colors disabled:opacity-50"
-                    >
-                        {actionLoading === 'backup' ? (
-                            <FiRefreshCw className="w-5 h-5 animate-spin text-green-600" />
-                        ) : (
-                            <FiDownload className="w-5 h-5 text-green-600" />
-                        )}
-                        <span className="font-medium text-gray-700 dark:text-gray-300">ডেটাবেস ব্যাকআপ</span>
-                    </button>
-
-                    <button
                         onClick={handleClearOldLogs}
                         disabled={actionLoading === 'logs'}
                         className="flex items-center justify-center gap-2 p-4 border-2 border-dashed border-gray-200 dark:border-gray-700 rounded-lg hover:border-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors disabled:opacity-50"
@@ -295,7 +503,7 @@ const SystemSettings: React.FC = () => {
                         ) : (
                             <FiTrash2 className="w-5 h-5 text-red-600" />
                         )}
-                        <span className="font-medium text-gray-700 dark:text-gray-300">পুরানো লগ মুছুন</span>
+                        <span className="font-medium text-gray-700 dark:text-gray-300">পুরানো লগ মুছুন (৯০ দিন)</span>
                     </button>
                 </div>
                 <p className="mt-4 text-sm text-gray-500 dark:text-gray-400">
@@ -327,6 +535,55 @@ const SystemSettings: React.FC = () => {
                     </div>
                 </div>
             </div>
+
+            {/* Restore Confirmation Modal */}
+            {showRestoreConfirm && (
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+                    <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl max-w-md w-full p-6">
+                        <div className="flex items-center gap-3 mb-4">
+                            <div className="p-3 rounded-full bg-red-100 dark:bg-red-900/30">
+                                <FiAlertTriangle className="w-6 h-6 text-red-600 dark:text-red-400" />
+                            </div>
+                            <h3 className="text-lg font-semibold text-gray-800 dark:text-white">
+                                ডেটাবেস রিস্টোর করুন?
+                            </h3>
+                        </div>
+                        <p className="text-gray-600 dark:text-gray-400 mb-4">
+                            এই ব্যাকআপ থেকে ডেটাবেস রিস্টোর করলে বর্তমান সব ডেটা মুছে যাবে এবং
+                            ব্যাকআপের ডেটা দিয়ে প্রতিস্থাপিত হবে।
+                        </p>
+                        <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-3 mb-4 text-sm">
+                            <p><strong>ফাইল:</strong> {showRestoreConfirm.filename}</p>
+                            <p><strong>তারিখ:</strong> {new Date(showRestoreConfirm.createdAt).toLocaleString('bn-BD')}</p>
+                            <p><strong>সাইজ:</strong> {showRestoreConfirm.sizeFormatted}</p>
+                        </div>
+                        <p className="text-sm text-amber-600 dark:text-amber-400 mb-6">
+                            রিস্টোর করার আগে একটি প্রি-রিস্টোর ব্যাকআপ স্বয়ংক্রিয়ভাবে তৈরি হবে।
+                        </p>
+                        <div className="flex justify-end gap-3">
+                            <button
+                                onClick={() => setShowRestoreConfirm(null)}
+                                className="btn btn-outline flex items-center gap-2"
+                            >
+                                <FiX className="w-4 h-4" />
+                                বাতিল
+                            </button>
+                            <button
+                                onClick={() => handleRestoreBackup(showRestoreConfirm)}
+                                disabled={actionLoading === 'restore'}
+                                className="btn bg-red-600 hover:bg-red-700 text-white flex items-center gap-2"
+                            >
+                                {actionLoading === 'restore' ? (
+                                    <FiRefreshCw className="w-4 h-4 animate-spin" />
+                                ) : (
+                                    <FiUpload className="w-4 h-4" />
+                                )}
+                                রিস্টোর করুন
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
