@@ -39,6 +39,7 @@ const GroupwiseAdmin = lazy(() => import('./pages/Admin/GroupwiseAdmin'));
 const ManagerActivity = lazy(() => import('./pages/Admin/ManagerActivity'));
 const HolidayManagement = lazy(() => import('./pages/Admin/HolidayManagement'));
 const AuditLogs = lazy(() => import('./pages/Admin/AuditLogs'));
+const FinancialDashboard = lazy(() => import('./pages/Admin/FinancialDashboard'));
 
 // SuperAdmin Pages
 const SystemSettings = lazy(() => import('./pages/SuperAdmin/SystemSettings'));
@@ -101,6 +102,7 @@ function App() {
                     <Route path="admin/manager-activity" element={<ProtectedRoute requiredRole="admin"><ManagerActivity /></ProtectedRoute>} />
                     <Route path="admin/holidays" element={<ProtectedRoute requiredRole="admin"><HolidayManagement /></ProtectedRoute>} />
                     <Route path="admin/audit-logs" element={<ProtectedRoute requiredRole="admin"><AuditLogs /></ProtectedRoute>} />
+                    <Route path="admin/financial" element={<ProtectedRoute requiredRole="admin"><FinancialDashboard /></ProtectedRoute>} />
 
                     {/* SuperAdmin Routes */}
                     <Route path="superadmin/system" element={<ProtectedRoute requiredRole="superadmin"><SystemSettings /></ProtectedRoute>} />

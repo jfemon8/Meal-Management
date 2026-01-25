@@ -61,6 +61,7 @@ const Layout = () => {
 
     // Admin menu - visible to Admin, SuperAdmin
     const adminMenuItems = [
+        { path: '/admin/financial', icon: FiCreditCard, label: 'আর্থিক ড্যাশবোর্ড' },
         { path: '/admin/users', icon: FiUserCheck, label: 'ইউজার ম্যানেজ' },
         { path: '/admin/groups', icon: FiUsers, label: 'গ্রুপ ম্যানেজ' },
         { path: '/admin/manager-activity', icon: FiClipboard, label: 'ম্যানেজার অ্যাক্টিভিটি' },

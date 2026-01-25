@@ -17,6 +17,8 @@ interface User {
     phone?: string;
     role: 'user' | 'manager' | 'admin' | 'superadmin';
     permissions: Permission[];
+    isGroupManager?: boolean;
+    group?: string;
     balances: {
         breakfast: BalanceInfo;
         lunch: BalanceInfo;
@@ -72,7 +74,7 @@ export const useAuth = () => {
         user,
         loading,
         hasRole,
-        isManager: user && ['manager', 'admin', 'superadmin'].includes(user.role),
+        isManager: user && (['manager', 'admin', 'superadmin'].includes(user.role) || user.isGroupManager === true),
         isAdmin: user && ['admin', 'superadmin'].includes(user.role),
         isSuperAdmin: user && user.role === 'superadmin'
     };
