@@ -87,9 +87,15 @@ export const breakfastService = {
         return response.data;
     },
 
-    // Submit breakfast cost (Manager+)
+    // Submit breakfast cost with equal split (Manager+)
     submitBreakfast: async (date, totalCost, participants, description = '') => {
         const response = await api.post('/breakfast', { date, totalCost, participants, description });
+        return response.data;
+    },
+
+    // Submit breakfast cost with individual amounts per user (Manager+)
+    submitBreakfastIndividual: async (date, participantCosts, description = '') => {
+        const response = await api.post('/breakfast', { date, participantCosts, description });
         return response.data;
     },
 
@@ -99,9 +105,21 @@ export const breakfastService = {
         return response.data;
     },
 
-    // Update breakfast (Manager+)
+    // Update breakfast with equal split (Manager+)
     updateBreakfast: async (id, data) => {
         const response = await api.put(`/breakfast/${id}`, data);
+        return response.data;
+    },
+
+    // Update breakfast with individual costs (Manager+)
+    updateBreakfastIndividual: async (id, participantCosts, description) => {
+        const response = await api.put(`/breakfast/${id}`, { participantCosts, description });
+        return response.data;
+    },
+
+    // Reverse finalized breakfast (refund) (Manager+)
+    reverseBreakfast: async (id, reason) => {
+        const response = await api.post(`/breakfast/${id}/reverse`, { reason });
         return response.data;
     },
 

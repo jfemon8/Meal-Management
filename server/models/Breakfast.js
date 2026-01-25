@@ -48,6 +48,21 @@ const breakfastSchema = new mongoose.Schema({
     isFinalized: {
         type: Boolean,
         default: false
+    },
+    // Reverse-related fields (for refunding finalized entries)
+    isReversed: {
+        type: Boolean,
+        default: false
+    },
+    reversedAt: {
+        type: Date
+    },
+    reversedBy: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User'
+    },
+    reverseReason: {
+        type: String
     }
 }, {
     timestamps: true
