@@ -31,6 +31,7 @@ mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/meal-mana
 // Routes
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/users', require('./routes/users'));
+app.use('/api/groups', require('./routes/groups'));
 app.use('/api/meals', require('./routes/meals'));
 app.use('/api/breakfast', require('./routes/breakfast'));
 app.use('/api/transactions', require('./routes/transactions'));

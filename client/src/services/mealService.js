@@ -177,6 +177,12 @@ export const userService = {
     deleteUser: async (id) => {
         const response = await api.delete(`/users/${id}`);
         return response.data;
+    },
+
+    // Reset user password (Admin+)
+    resetPassword: async (id, newPassword, forceChangeOnLogin = true) => {
+        const response = await api.post(`/users/${id}/reset-password`, { newPassword, forceChangeOnLogin });
+        return response.data;
     }
 };
 
@@ -681,6 +687,74 @@ export const notificationService = {
     // Get all notifications for admin
     getAdminNotifications: async (params = {}) => {
         const response = await api.get('/notifications/admin/all', { params });
+        return response.data;
+    }
+};
+
+export const groupService = {
+    // Get all groups
+    getAllGroups: async (params = {}) => {
+        const response = await api.get('/groups', { params });
+        return response.data;
+    },
+
+    // Get single group
+    getGroup: async (id) => {
+        const response = await api.get(`/groups/${id}`);
+        return response.data;
+    },
+
+    // Create group (Admin+)
+    createGroup: async (data) => {
+        const response = await api.post('/groups', data);
+        return response.data;
+    },
+
+    // Update group (Admin+)
+    updateGroup: async (id, data) => {
+        const response = await api.put(`/groups/${id}`, data);
+        return response.data;
+    },
+
+    // Delete group (SuperAdmin)
+    deleteGroup: async (id) => {
+        const response = await api.delete(`/groups/${id}`);
+        return response.data;
+    },
+
+    // Get group members
+    getMembers: async (id) => {
+        const response = await api.get(`/groups/${id}/members`);
+        return response.data;
+    },
+
+    // Add member to group
+    addMember: async (groupId, userId) => {
+        const response = await api.post(`/groups/${groupId}/members`, { userId });
+        return response.data;
+    },
+
+    // Remove member from group
+    removeMember: async (groupId, userId) => {
+        const response = await api.delete(`/groups/${groupId}/members/${userId}`);
+        return response.data;
+    },
+
+    // Set group manager (Admin+)
+    setManager: async (groupId, userId) => {
+        const response = await api.put(`/groups/${groupId}/manager`, { userId });
+        return response.data;
+    },
+
+    // Bulk add members (Admin+)
+    bulkAddMembers: async (groupId, userIds) => {
+        const response = await api.post(`/groups/${groupId}/members/bulk`, { userIds });
+        return response.data;
+    },
+
+    // Get available users (not in any group)
+    getAvailableUsers: async () => {
+        const response = await api.get('/groups/available-users/list');
         return response.data;
     }
 };

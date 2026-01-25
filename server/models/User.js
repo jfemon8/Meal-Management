@@ -28,6 +28,31 @@ const userSchema = new mongoose.Schema({
         enum: ['user', 'manager', 'admin', 'superadmin'],
         default: 'user'
     },
+    // Group assignment - user belongs to a group
+    group: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Group',
+        default: null
+    },
+    // If user is a manager of a group (group-level manager, different from system role)
+    isGroupManager: {
+        type: Boolean,
+        default: false
+    },
+    // Password reset tracking
+    mustChangePassword: {
+        type: Boolean,
+        default: false
+    },
+    passwordResetBy: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User',
+        default: null
+    },
+    passwordResetAt: {
+        type: Date,
+        default: null
+    },
     // Custom permissions array for specific user permissions (optional)
     // These are in addition to role-based permissions
     permissions: {
@@ -350,5 +375,7 @@ userSchema.index({ isDeleted: 1, deletedAt: -1 });
 userSchema.index({ 'balances.breakfast.amount': 1 });
 userSchema.index({ 'balances.lunch.amount': 1 });
 userSchema.index({ 'balances.dinner.amount': 1 });
+userSchema.index({ group: 1, isActive: 1 });
+userSchema.index({ group: 1, isGroupManager: 1 });
 
 module.exports = mongoose.model('User', userSchema);

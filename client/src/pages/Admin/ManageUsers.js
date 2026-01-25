@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { userService } from '../../services/mealService';
 import { useAuth } from '../../context/AuthContext';
 import toast from 'react-hot-toast';
-import { FiSearch, FiUser, FiEdit2, FiTrash2, FiUserCheck, FiUserX, FiShield } from 'react-icons/fi';
+import { FiSearch, FiUser, FiEdit2, FiTrash2, FiUserCheck, FiUserX, FiShield, FiKey, FiX } from 'react-icons/fi';
 
 const ManageUsers = () => {
     const { user: currentUser, isSuperAdmin } = useAuth();
@@ -11,6 +11,13 @@ const ManageUsers = () => {
     const [search, setSearch] = useState('');
     const [editingUser, setEditingUser] = useState(null);
     const [roleChange, setRoleChange] = useState('');
+
+    // Password reset states
+    const [showResetPasswordModal, setShowResetPasswordModal] = useState(false);
+    const [resetPasswordUser, setResetPasswordUser] = useState(null);
+    const [newPassword, setNewPassword] = useState('');
+    const [forceChangeOnLogin, setForceChangeOnLogin] = useState(true);
+    const [resetPasswordLoading, setResetPasswordLoading] = useState(false);
 
     useEffect(() => {
         loadUsers();
@@ -60,6 +67,34 @@ const ManageUsers = () => {
             loadUsers();
         } catch (error) {
             toast.error(error.response?.data?.message || 'ডিলিট করতে সমস্যা হয়েছে');
+        }
+    };
+
+    const openResetPasswordModal = (user) => {
+        setResetPasswordUser(user);
+        setNewPassword('');
+        setForceChangeOnLogin(true);
+        setShowResetPasswordModal(true);
+    };
+
+    const handleResetPassword = async (e) => {
+        e.preventDefault();
+        if (!newPassword || newPassword.length < 6) {
+            toast.error('পাসওয়ার্ড কমপক্ষে ৬ অক্ষরের হতে হবে');
+            return;
+        }
+
+        setResetPasswordLoading(true);
+        try {
+            await userService.resetPassword(resetPasswordUser._id, newPassword, forceChangeOnLogin);
+            toast.success('পাসওয়ার্ড সফলভাবে রিসেট হয়েছে');
+            setShowResetPasswordModal(false);
+            setResetPasswordUser(null);
+            setNewPassword('');
+        } catch (error) {
+            toast.error(error.response?.data?.message || 'পাসওয়ার্ড রিসেট করতে সমস্যা হয়েছে');
+        } finally {
+            setResetPasswordLoading(false);
         }
     };
 
@@ -182,6 +217,14 @@ const ManageUsers = () => {
                                             </button>
 
                                             <button
+                                                onClick={() => openResetPasswordModal(user)}
+                                                className="btn btn-outline text-sm py-1 flex items-center gap-1"
+                                            >
+                                                <FiKey className="w-4 h-4" />
+                                                পাসওয়ার্ড রিসেট
+                                            </button>
+
+                                            <button
                                                 onClick={() => handleStatusToggle(user._id, user.isActive)}
                                                 className={`btn text-sm py-1 flex items-center gap-1 ${user.isActive ? 'btn-danger' : 'btn-primary'
                                                     }`}
@@ -228,6 +271,92 @@ const ManageUsers = () => {
                     <p className="text-center text-gray-500 py-8">কোন ইউজার পাওয়া যায়নি</p>
                 )}
             </div>
+
+            {/* Password Reset Modal */}
+            {showResetPasswordModal && resetPasswordUser && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+                    <div className="bg-white rounded-lg w-full max-w-md">
+                        <div className="p-6">
+                            <div className="flex justify-between items-center mb-4">
+                                <h2 className="text-xl font-semibold">পাসওয়ার্ড রিসেট</h2>
+                                <button
+                                    onClick={() => {
+                                        setShowResetPasswordModal(false);
+                                        setResetPasswordUser(null);
+                                        setNewPassword('');
+                                    }}
+                                    className="text-gray-500 hover:text-gray-700"
+                                >
+                                    <FiX className="w-5 h-5" />
+                                </button>
+                            </div>
+
+                            <div className="mb-4 p-3 bg-gray-50 rounded-lg">
+                                <p className="text-sm text-gray-600">ইউজার:</p>
+                                <p className="font-medium">{resetPasswordUser.name}</p>
+                                <p className="text-sm text-gray-500">{resetPasswordUser.email}</p>
+                            </div>
+
+                            <form onSubmit={handleResetPassword}>
+                                <div className="space-y-4">
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                                            নতুন পাসওয়ার্ড *
+                                        </label>
+                                        <input
+                                            type="password"
+                                            value={newPassword}
+                                            onChange={(e) => setNewPassword(e.target.value)}
+                                            className="input"
+                                            placeholder="কমপক্ষে ৬ অক্ষর"
+                                            minLength={6}
+                                            required
+                                        />
+                                    </div>
+
+                                    <label className="flex items-center gap-2 cursor-pointer">
+                                        <input
+                                            type="checkbox"
+                                            checked={forceChangeOnLogin}
+                                            onChange={(e) => setForceChangeOnLogin(e.target.checked)}
+                                            className="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                                        />
+                                        <span className="text-sm">লগইনের পর পাসওয়ার্ড পরিবর্তন করতে বাধ্য করুন</span>
+                                    </label>
+
+                                    <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
+                                        <p className="text-sm text-yellow-700">
+                                            সতর্কতা: এই অপারেশনটি ইউজারের পুরানো পাসওয়ার্ড মুছে ফেলবে এবং নতুন পাসওয়ার্ড সেট করবে।
+                                        </p>
+                                    </div>
+                                </div>
+
+                                <div className="flex justify-end gap-3 mt-6">
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            setShowResetPasswordModal(false);
+                                            setResetPasswordUser(null);
+                                            setNewPassword('');
+                                        }}
+                                        className="btn btn-outline"
+                                        disabled={resetPasswordLoading}
+                                    >
+                                        বাতিল
+                                    </button>
+                                    <button
+                                        type="submit"
+                                        className="btn btn-primary"
+                                        disabled={resetPasswordLoading}
+                                    >
+                                        {resetPasswordLoading ? 'রিসেট হচ্ছে...' : 'পাসওয়ার্ড রিসেট করুন'}
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

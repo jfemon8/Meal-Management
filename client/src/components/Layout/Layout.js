@@ -60,6 +60,7 @@ const Layout = () => {
     // Admin menu - visible to Admin, SuperAdmin
     const adminMenuItems = [
         { path: '/admin/users', icon: FiUserCheck, label: 'ইউজার ম্যানেজ' },
+        { path: '/admin/groups', icon: FiUsers, label: 'গ্রুপ ম্যানেজ' },
         { path: '/admin/holidays', icon: FiSun, label: 'ছুটি ম্যানেজ' },
         { path: '/admin/audit-logs', icon: FiActivity, label: 'অডিট লগ' },
     ];

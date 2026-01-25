@@ -354,6 +354,53 @@ router.put('/notification-preferences', protect, async (req, res) => {
     }
 });
 
+// @route   POST /api/users/:id/reset-password
+// @desc    Reset user password by Admin (Admin+ only)
+// @access  Private (Admin+)
+router.post('/:id/reset-password', protect, isAdmin, [
+    body('newPassword').isLength({ min: 6 }).withMessage('পাসওয়ার্ড কমপক্ষে ৬ অক্ষরের হতে হবে'),
+    body('forceChangeOnLogin').optional().isBoolean()
+], async (req, res) => {
+    try {
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+            return res.status(400).json({ errors: errors.array() });
+        }
+
+        const { newPassword, forceChangeOnLogin = true } = req.body;
+
+        const user = await User.findById(req.params.id);
+        if (!user) {
+            return res.status(404).json({ message: 'ইউজার পাওয়া যায়নি' });
+        }
+
+        // Only superadmin can reset admin/superadmin passwords
+        if (['admin', 'superadmin'].includes(user.role) && req.user.role !== 'superadmin') {
+            return res.status(403).json({ message: 'শুধুমাত্র সুপার এডমিন অন্য এডমিনের পাসওয়ার্ড রিসেট করতে পারবে' });
+        }
+
+        // Can't reset superadmin password (only superadmin themselves can)
+        if (user.role === 'superadmin' && req.user._id.toString() !== user._id.toString()) {
+            return res.status(403).json({ message: 'সুপার এডমিনের পাসওয়ার্ড রিসেট করা যাবে না' });
+        }
+
+        // Set new password
+        user.password = newPassword;
+        user.mustChangePassword = forceChangeOnLogin;
+        user.passwordResetBy = req.user._id;
+        user.passwordResetAt = new Date();
+        await user.save();
+
+        res.json({
+            message: 'পাসওয়ার্ড সফলভাবে রিসেট হয়েছে',
+            forceChangeOnLogin
+        });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'সার্ভার এরর' });
+    }
+});
+
 // @route   DELETE /api/users/:id
 // @desc    Delete user (SuperAdmin only)
 // @access  Private (SuperAdmin)
