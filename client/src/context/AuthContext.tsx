@@ -12,6 +12,8 @@ export interface User {
     role: 'user' | 'manager' | 'admin' | 'superadmin';
     permissions: Permission[];
     isActive: boolean;
+    isGroupManager?: boolean;
+    group?: string;
     balances: {
         breakfast: {
             amount: number;
@@ -140,7 +142,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         hasPermission,
         hasAnyPermission,
         hasAllPermissions,
-        isManager: user ? ['manager', 'admin', 'superadmin'].includes(user.role) : false,
+        isManager: user ? ['manager', 'admin', 'superadmin'].includes(user.role) || user.isGroupManager === true : false,
         isAdmin: user ? ['admin', 'superadmin'].includes(user.role) : false,
         isSuperAdmin: user ? user.role === 'superadmin' : false
     };

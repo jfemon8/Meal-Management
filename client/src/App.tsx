@@ -35,6 +35,7 @@ const DefaultersList = lazy(() => import('./pages/Manager/DefaultersList'));
 // Admin Pages
 const ManageUsers = lazy(() => import('./pages/Admin/ManageUsers'));
 const GroupManagement = lazy(() => import('./pages/Admin/GroupManagement'));
+const GroupwiseAdmin = lazy(() => import('./pages/Admin/GroupwiseAdmin'));
 const ManagerActivity = lazy(() => import('./pages/Admin/ManagerActivity'));
 const HolidayManagement = lazy(() => import('./pages/Admin/HolidayManagement'));
 const AuditLogs = lazy(() => import('./pages/Admin/AuditLogs'));
@@ -90,6 +91,9 @@ function App() {
                     <Route path="manager/daily-report" element={<ProtectedRoute requiredRole="manager"><DailyMealReport /></ProtectedRoute>} />
                     <Route path="manager/breakfast-report" element={<ProtectedRoute requiredRole="manager"><BreakfastReport /></ProtectedRoute>} />
                     <Route path="manager/defaulters" element={<ProtectedRoute requiredRole="manager"><DefaultersList /></ProtectedRoute>} />
+
+                    {/* Manager Route for Group Users (also accessible by Admin+) */}
+                    <Route path="manager/group-users" element={<ProtectedRoute requiredRole="manager"><GroupwiseAdmin /></ProtectedRoute>} />
 
                     {/* Admin Routes */}
                     <Route path="admin/users" element={<ProtectedRoute requiredRole="admin"><ManageUsers /></ProtectedRoute>} />
