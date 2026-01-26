@@ -45,6 +45,7 @@ const AdminSettings = lazy(() => import('./pages/Admin/AdminSettings'));
 // SuperAdmin Pages
 const SystemSettings = lazy(() => import('./pages/SuperAdmin/SystemSettings'));
 const RoleManagement = lazy(() => import('./pages/SuperAdmin/RoleManagement'));
+const MetricsDashboard = lazy(() => import('./pages/SuperAdmin/MetricsDashboard'));
 
 // Loading component
 const PageLoader = () => (
@@ -109,6 +110,7 @@ function App() {
                     {/* SuperAdmin Routes */}
                     <Route path="superadmin/system" element={<ProtectedRoute requiredRole="superadmin"><SystemSettings /></ProtectedRoute>} />
                     <Route path="superadmin/roles" element={<ProtectedRoute requiredRole="superadmin"><RoleManagement /></ProtectedRoute>} />
+                    <Route path="superadmin/metrics" element={<ProtectedRoute requiredRole="superadmin"><MetricsDashboard /></ProtectedRoute>} />
                 </Route>
 
                 {/* Fallback */}

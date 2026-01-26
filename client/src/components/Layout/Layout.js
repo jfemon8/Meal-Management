@@ -72,6 +72,7 @@ const Layout = () => {
 
     // SuperAdmin menu - visible only to SuperAdmin
     const superAdminMenuItems = [
+        { path: '/superadmin/metrics', icon: FiActivity, label: 'সিস্টেম মেট্রিক্স' },
         { path: '/superadmin/system', icon: FiDatabase, label: 'সিস্টেম সেটিংস' },
         { path: '/superadmin/roles', icon: FiShield, label: 'রোল ম্যানেজ' },
     ];

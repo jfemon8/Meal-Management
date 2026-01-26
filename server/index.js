@@ -6,15 +6,22 @@ const dotenv = require('dotenv');
 // Load environment variables
 dotenv.config();
 
+// Import cron jobs
+const { initHolidayCron } = require('./jobs/holidayCron');
+const { initNotificationCron } = require('./jobs/notificationCron');
+
+// Import performance and error tracking
+const { trackApiPerformance, startSystemMetricsCollection } = require('./middleware/performanceTracker');
+const { errorLogger } = require('./middleware/errorLogger');
+
 const app = express();
 
 // Middleware
 app.use(cors());
 app.use(express.json());
 
-// Import cron jobs
-const { initHolidayCron } = require('./jobs/holidayCron');
-const { initNotificationCron } = require('./jobs/notificationCron');
+// Performance tracking middleware
+app.use(trackApiPerformance);
 
 // MongoDB Connection
 mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/meal-management')
@@ -24,6 +31,8 @@ mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/meal-mana
         if (process.env.NODE_ENV !== 'test') {
             initHolidayCron();
             initNotificationCron();
+            // Start system metrics collection
+            startSystemMetricsCollection();
         }
     })
     .catch(err => console.error('❌ MongoDB Connection Error:', err));
@@ -46,6 +55,10 @@ app.use('/api/feature-flags', require('./routes/featureFlags'));
 app.use('/api/notifications', require('./routes/notifications'));
 app.use('/api/audit-logs', require('./routes/auditLogs'));
 app.use('/api/backup', require('./routes/backup'));
+app.use('/api/metrics', require('./routes/metrics'));
+
+// Error logging middleware (before error handler)
+app.use(errorLogger);
 
 // Error handling middleware
 app.use((err, req, res, next) => {

@@ -31,7 +31,8 @@
       "Bash(sc query:*)",
       "Bash(powershell \"Get-Process node -ErrorAction SilentlyContinue | Stop-Process -Force\")",
       "Bash(dir /s \"d:\\\\Projects\\\\MealManagement\")",
-      "Bash(dir:*)"
+      "Bash(dir:*)",
+      "Bash(xargs ls:*)"
     ]
   }
 }
