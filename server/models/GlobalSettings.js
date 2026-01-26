@@ -140,6 +140,137 @@ const globalSettingsSchema = new mongoose.Schema({
         }
     },
 
+    // ==================== Maintenance Mode ====================
+    maintenance: {
+        // Is system in maintenance mode?
+        isEnabled: {
+            type: Boolean,
+            default: false
+        },
+        // Maintenance message to display
+        message: {
+            type: String,
+            default: 'সিস্টেম রক্ষণাবেক্ষণ চলছে। অনুগ্রহ করে কিছুক্ষণ পর আবার চেষ্টা করুন।'
+        },
+        // English message
+        messageEn: {
+            type: String,
+            default: 'System is under maintenance. Please try again later.'
+        },
+        // Scheduled start time (optional)
+        scheduledStart: {
+            type: Date,
+            default: null
+        },
+        // Scheduled end time (optional)
+        scheduledEnd: {
+            type: Date,
+            default: null
+        },
+        // Roles that can access during maintenance
+        allowedRoles: {
+            type: [String],
+            default: ['superadmin']
+        },
+        // Specific users who can access (by ID)
+        allowedUsers: [{
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'User'
+        }],
+        // Who enabled maintenance
+        enabledBy: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'User'
+        },
+        // When maintenance was enabled
+        enabledAt: {
+            type: Date
+        },
+        // Reason for maintenance
+        reason: {
+            type: String
+        }
+    },
+
+    // ==================== Advanced Rate Rules ====================
+    rateRules: {
+        // Enable advanced rate rules
+        enabled: {
+            type: Boolean,
+            default: false
+        },
+        // Rules array (evaluated in order)
+        rules: [{
+            name: {
+                type: String,
+                required: true
+            },
+            description: String,
+            isActive: {
+                type: Boolean,
+                default: true
+            },
+            priority: {
+                type: Number,
+                default: 0 // Higher priority = evaluated first
+            },
+            // Condition type
+            conditionType: {
+                type: String,
+                enum: ['day_of_week', 'date_range', 'holiday', 'user_count', 'special_event'],
+                required: true
+            },
+            // Condition parameters (depends on conditionType)
+            conditionParams: {
+                // For day_of_week: days array [0-6] (0=Sunday)
+                days: [Number],
+                // For date_range: start and end dates
+                startDate: Date,
+                endDate: Date,
+                // For user_count: min/max user count
+                minUsers: Number,
+                maxUsers: Number,
+                // For holiday: holiday types
+                holidayTypes: [String],
+                // For special_event: event name
+                eventName: String
+            },
+            // Rate adjustment
+            adjustment: {
+                type: {
+                    type: String,
+                    enum: ['fixed', 'percentage', 'multiplier'],
+                    default: 'fixed'
+                },
+                // For fixed: exact rate value
+                // For percentage: percentage to add/subtract (-20 = 20% off)
+                // For multiplier: multiply by this value (0.8 = 20% off)
+                value: {
+                    type: Number,
+                    default: 0
+                },
+                // Apply to which meal type
+                applyTo: {
+                    type: String,
+                    enum: ['lunch', 'dinner', 'both'],
+                    default: 'both'
+                }
+            },
+            // Validity period
+            validFrom: Date,
+            validUntil: Date,
+            // Metadata
+            createdBy: {
+                type: mongoose.Schema.Types.ObjectId,
+                ref: 'User'
+            },
+            createdAt: {
+                type: Date,
+                default: Date.now
+            }
+        }]
+    },
+
     // Audit trail
     modifiedBy: {
         type: mongoose.Schema.Types.ObjectId,

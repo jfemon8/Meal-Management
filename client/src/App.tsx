@@ -47,6 +47,9 @@ const SystemSettings = lazy(() => import('./pages/SuperAdmin/SystemSettings'));
 const RoleManagement = lazy(() => import('./pages/SuperAdmin/RoleManagement'));
 const MetricsDashboard = lazy(() => import('./pages/SuperAdmin/MetricsDashboard'));
 const FeatureFlags = lazy(() => import('./pages/SuperAdmin/FeatureFlags'));
+const OverrideManagement = lazy(() => import('./pages/SuperAdmin/OverrideManagement'));
+const DataControl = lazy(() => import('./pages/SuperAdmin/DataControl'));
+const SystemConfig = lazy(() => import('./pages/SuperAdmin/SystemConfig'));
 
 // Loading component
 const PageLoader = () => (
@@ -113,6 +116,9 @@ function App() {
                     <Route path="superadmin/roles" element={<ProtectedRoute requiredRole="superadmin"><RoleManagement /></ProtectedRoute>} />
                     <Route path="superadmin/metrics" element={<ProtectedRoute requiredRole="superadmin"><MetricsDashboard /></ProtectedRoute>} />
                     <Route path="superadmin/feature-flags" element={<ProtectedRoute requiredRole="superadmin"><FeatureFlags /></ProtectedRoute>} />
+                    <Route path="superadmin/overrides" element={<ProtectedRoute requiredRole="superadmin"><OverrideManagement /></ProtectedRoute>} />
+                    <Route path="superadmin/data-control" element={<ProtectedRoute requiredRole="superadmin"><DataControl /></ProtectedRoute>} />
+                    <Route path="superadmin/config" element={<ProtectedRoute requiredRole="superadmin"><SystemConfig /></ProtectedRoute>} />
                 </Route>
 
                 {/* Fallback */}

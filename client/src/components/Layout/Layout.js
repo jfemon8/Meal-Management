@@ -22,7 +22,8 @@ import {
     FiShield,
     FiDatabase,
     FiGrid,
-    FiFlag
+    FiFlag,
+    FiTool
 } from 'react-icons/fi';
 import BDTIcon from '../Icons/BDTIcon';
 
@@ -77,6 +78,9 @@ const Layout = () => {
         { path: '/superadmin/system', icon: FiDatabase, label: 'সিস্টেম সেটিংস' },
         { path: '/superadmin/roles', icon: FiShield, label: 'রোল ম্যানেজ' },
         { path: '/superadmin/feature-flags', icon: FiFlag, label: 'ফিচার ফ্ল্যাগ' },
+        { path: '/superadmin/overrides', icon: FiSettings, label: 'ওভাররাইড ম্যানেজ' },
+        { path: '/superadmin/data-control', icon: FiDatabase, label: 'ডাটা কন্ট্রোল' },
+        { path: '/superadmin/config', icon: FiTool, label: 'সিস্টেম কনফিগ' },
     ];
 
     const isActive = (path) => location.pathname === path;
