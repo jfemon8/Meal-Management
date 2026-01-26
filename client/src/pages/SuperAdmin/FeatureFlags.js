@@ -15,7 +15,6 @@ import {
     FiGlobe,
     FiChevronDown,
     FiChevronUp,
-    FiHistory,
     FiAlertTriangle
 } from 'react-icons/fi';
 import toast from 'react-hot-toast';
@@ -350,7 +349,7 @@ const FeatureFlags = () => {
                                     {flag.history?.length > 0 && (
                                         <div className="mt-4">
                                             <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 flex items-center gap-2">
-                                                <FiHistory className="w-4 h-4" />
+                                                <FiClock className="w-4 h-4" />
                                                 ইতিহাস (সর্বশেষ ৫টি)
                                             </p>
                                             <div className="space-y-2">

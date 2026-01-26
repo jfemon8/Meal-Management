@@ -6,7 +6,6 @@ import {
     FiTool,
     FiDollarSign,
     FiPower,
-    FiPowerOff,
     FiCalendar,
     FiPlus,
     FiEdit2,
@@ -348,7 +347,7 @@ const SystemConfig = () => {
                                                 : 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300'
                                         }`}
                                     >
-                                        {rateRulesData?.enabled ? <FiPower className="w-4 h-4" /> : <FiPowerOff className="w-4 h-4" />}
+                                        {rateRulesData?.enabled ? <FiPower className="w-4 h-4" /> : <FiPower className="w-4 h-4" />}
                                         {rateRulesData?.enabled ? 'চালু আছে' : 'বন্ধ আছে'}
                                     </button>
                                     <span className="text-sm text-gray-500 dark:text-gray-400">

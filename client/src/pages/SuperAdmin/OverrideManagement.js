@@ -7,7 +7,6 @@ import {
     FiCoffee,
     FiEdit3,
     FiUnlock,
-    FiHistory,
     FiFilter,
     FiX,
     FiCheck,
@@ -50,7 +49,7 @@ const OverrideManagement = () => {
     const tabs = [
         { id: 'months', label: 'মাসের সেটিংস', icon: FiCalendar },
         { id: 'breakfasts', label: 'ব্রেকফাস্ট', icon: FiCoffee },
-        { id: 'history', label: 'সংশোধন ইতিহাস', icon: FiHistory }
+        { id: 'history', label: 'সংশোধন ইতিহাস', icon: FiClock }
     ];
 
     const handleEditMonth = (month) => {
