@@ -46,6 +46,7 @@ const AdminSettings = lazy(() => import('./pages/Admin/AdminSettings'));
 const SystemSettings = lazy(() => import('./pages/SuperAdmin/SystemSettings'));
 const RoleManagement = lazy(() => import('./pages/SuperAdmin/RoleManagement'));
 const MetricsDashboard = lazy(() => import('./pages/SuperAdmin/MetricsDashboard'));
+const FeatureFlags = lazy(() => import('./pages/SuperAdmin/FeatureFlags'));
 
 // Loading component
 const PageLoader = () => (
@@ -111,6 +112,7 @@ function App() {
                     <Route path="superadmin/system" element={<ProtectedRoute requiredRole="superadmin"><SystemSettings /></ProtectedRoute>} />
                     <Route path="superadmin/roles" element={<ProtectedRoute requiredRole="superadmin"><RoleManagement /></ProtectedRoute>} />
                     <Route path="superadmin/metrics" element={<ProtectedRoute requiredRole="superadmin"><MetricsDashboard /></ProtectedRoute>} />
+                    <Route path="superadmin/feature-flags" element={<ProtectedRoute requiredRole="superadmin"><FeatureFlags /></ProtectedRoute>} />
                 </Route>
 
                 {/* Fallback */}

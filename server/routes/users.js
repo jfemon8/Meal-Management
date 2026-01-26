@@ -181,6 +181,86 @@ router.put('/:id/role', protect, isAdmin, [
     }
 });
 
+// @route   PUT /api/users/:id/permissions
+// @desc    Update user custom permissions (SuperAdmin only)
+// @access  Private (SuperAdmin)
+router.put('/:id/permissions', protect, isSuperAdmin, [
+    body('permissions').isArray().withMessage('permissions অ্যারে হতে হবে')
+], async (req, res) => {
+    try {
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+            return res.status(400).json({ errors: errors.array() });
+        }
+
+        const { permissions } = req.body;
+        const { PERMISSIONS } = require('../config/permissions');
+
+        // Validate all permissions exist
+        const validPermissions = Object.values(PERMISSIONS);
+        const invalidPerms = permissions.filter(p => !validPermissions.includes(p));
+        if (invalidPerms.length > 0) {
+            return res.status(400).json({
+                message: `অবৈধ পারমিশন: ${invalidPerms.join(', ')}`
+            });
+        }
+
+        const user = await User.findById(req.params.id);
+        if (!user) {
+            return res.status(404).json({ message: 'ইউজার পাওয়া যায়নি' });
+        }
+
+        // Can't modify superadmin permissions
+        if (user.role === 'superadmin') {
+            return res.status(403).json({ message: 'সুপার এডমিনের পারমিশন পরিবর্তন করা যাবে না' });
+        }
+
+        user.permissions = permissions;
+        await user.save();
+
+        res.json({
+            message: 'পারমিশন সফলভাবে আপডেট হয়েছে',
+            user: await User.findById(req.params.id).select('-password')
+        });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'সার্ভার এরর' });
+    }
+});
+
+// @route   GET /api/users/:id/permissions
+// @desc    Get user permissions (Admin+ only)
+// @access  Private (Admin+)
+router.get('/:id/permissions', protect, isAdmin, async (req, res) => {
+    try {
+        const user = await User.findById(req.params.id).select('name email role permissions');
+        if (!user) {
+            return res.status(404).json({ message: 'ইউজার পাওয়া যায়নি' });
+        }
+
+        const { PERMISSIONS, getRolePermissions } = require('../config/permissions');
+        const rolePermissions = getRolePermissions(user.role);
+        const customPermissions = user.permissions || [];
+        const allPermissions = [...new Set([...rolePermissions, ...customPermissions])];
+
+        res.json({
+            user: {
+                _id: user._id,
+                name: user.name,
+                email: user.email,
+                role: user.role
+            },
+            rolePermissions,
+            customPermissions,
+            allPermissions,
+            availablePermissions: PERMISSIONS
+        });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'সার্ভার এরর' });
+    }
+});
+
 // @route   PUT /api/users/:id/balance
 // @desc    Add/Deposit balance (Manager+ only)
 // @access  Private (Manager+)
