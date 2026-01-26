@@ -4,11 +4,11 @@ const { body, validationResult } = require('express-validator');
 const Meal = require('../models/Meal');
 const Holiday = require('../models/Holiday');
 const MonthSettings = require('../models/MonthSettings');
+const GlobalSettings = require('../models/GlobalSettings');
 const { protect, isManager } = require('../middleware/auth');
 const { requirePermission, requireOwnershipOrPermission } = require('../middleware/permissions');
 const { PERMISSIONS } = require('../config/permissions');
 const {
-    isDefaultMealOff,
     isPast,
     isToday,
     isFuture,
@@ -16,9 +16,10 @@ const {
     getDatesBetween
 } = require('../utils/dateUtils');
 const MealAuditLog = require('../models/MealAuditLog');
+const mealRulesService = require('../services/mealRulesService');
 
 // @route   GET /api/meals/status
-// @desc    Get meal status for a date range
+// @desc    Get meal status for a date range (Dynamic with GlobalSettings)
 // @access  Private (VIEW_OWN_MEALS or VIEW_ALL_MEALS)
 router.get('/status', protect, async (req, res) => {
     try {
@@ -32,7 +33,6 @@ router.get('/status', protect, async (req, res) => {
         // Users can only see their own meals, unless they have VIEW_ALL_MEALS permission
         let targetUserId = req.user._id;
         if (userId) {
-            // Check if user has permission to view other users' meals
             const User = require('../models/User');
             const currentUser = await User.findById(req.user._id);
 
@@ -41,19 +41,17 @@ router.get('/status', protect, async (req, res) => {
                     message: 'আপনি শুধুমাত্র নিজের মিল দেখতে পারবেন।'
                 });
             }
-
             targetUserId = userId;
         }
 
         const start = new Date(startDate);
         const end = new Date(endDate);
 
-        // Get holidays for the period
-        const holidays = await Holiday.find({
-            date: { $gte: start, $lte: end },
-            isActive: true
-        });
-        const holidayDates = holidays.map(h => h.date);
+        // Get global settings for dynamic rules
+        const settings = await GlobalSettings.getSettings();
+
+        // Get holidays filtered by policy
+        const holidays = await mealRulesService.getApplicableHolidays(start, end, settings);
 
         // Get manually set meals
         const meals = await Meal.find({
@@ -62,25 +60,58 @@ router.get('/status', protect, async (req, res) => {
             mealType
         });
 
-        // Build response with default and manual status
+        // Build response with dynamic status
         const dates = getDatesBetween(start, end);
-        const mealStatus = dates.map(date => {
+        const mealStatusPromises = dates.map(async (date) => {
             const dateStr = formatDate(date);
             const manualMeal = meals.find(m => formatDate(m.date) === dateStr);
-            const isDefaultOff = isDefaultMealOff(date, holidayDates);
+
+            // Get effective status using dynamic rules
+            const effectiveStatus = await mealRulesService.getEffectiveMealStatus({
+                date,
+                mealType,
+                manualMeal,
+                holidays,
+                settings
+            });
+
+            // Check edit permission
+            const permission = await mealRulesService.getMealTogglePermission({
+                user: req.user,
+                date,
+                mealType,
+                settings
+            });
+
+            // Get default off status for display
+            const defaultOffCheck = await mealRulesService.isDefaultMealOff(date, holidays, settings);
 
             return {
                 date: dateStr,
                 mealType,
-                isDefaultOff,
-                isOn: manualMeal ? manualMeal.isOn : !isDefaultOff,
-                count: manualMeal ? manualMeal.count : (!isDefaultOff ? 1 : 0),
+                isDefaultOff: defaultOffCheck.isOff,
+                defaultOffReason: defaultOffCheck.reason,
+                isOn: effectiveStatus.isOn,
+                count: effectiveStatus.count,
                 isManuallySet: !!manualMeal,
-                canEdit: isFuture(date) || (isManager && !isPast(date))
+                source: effectiveStatus.source,
+                canEdit: permission.canToggle,
+                editRestriction: permission.reason
             };
         });
 
-        res.json({ mealType, meals: mealStatus });
+        const mealStatus = await Promise.all(mealStatusPromises);
+
+        res.json({
+            mealType,
+            meals: mealStatus,
+            settings: {
+                weekendPolicy: settings.weekendPolicy,
+                holidayPolicy: settings.holidayPolicy,
+                cutoffTimes: settings.cutoffTimes,
+                defaultMealStatus: settings.defaultMealStatus
+            }
+        });
     } catch (error) {
         console.error(error);
         res.status(500).json({ message: 'সার্ভার এরর' });
@@ -88,7 +119,7 @@ router.get('/status', protect, async (req, res) => {
 });
 
 // @route   PUT /api/meals/toggle
-// @desc    Toggle meal on/off for a specific date
+// @desc    Toggle meal on/off for a specific date (Dynamic with GlobalSettings)
 // @access  Private
 router.put('/toggle', protect, [
     body('date').notEmpty().withMessage('তারিখ আবশ্যক'),
@@ -114,39 +145,27 @@ router.put('/toggle', protect, [
             return res.status(403).json({ message: 'অন্যের মিল পরিবর্তন করার অনুমতি নেই' });
         }
 
-        // User can only change future meals
-        if (!isManagerRole) {
-            if (!isFuture(mealDate)) {
-                return res.status(400).json({
-                    message: 'আপনি শুধুমাত্র ভবিষ্যতের মিল অন/অফ করতে পারবেন'
-                });
-            }
-        } else {
-            // Manager can change current month's meals only
-            const today = new Date();
-            const currentMonthSettings = await MonthSettings.findOne({
-                year: today.getFullYear(),
-                month: today.getMonth() + 1
+        // Use centralized validation with all dynamic rules
+        const validation = await mealRulesService.validateMealToggle({
+            user: req.user,
+            date: mealDate,
+            mealType,
+            targetUserId
+        });
+
+        if (!validation.valid) {
+            return res.status(400).json({
+                message: validation.error,
+                source: validation.details?.source
             });
-
-            if (currentMonthSettings) {
-                if (mealDate < currentMonthSettings.startDate || mealDate > currentMonthSettings.endDate) {
-                    return res.status(400).json({
-                        message: 'এই তারিখ বর্তমান মাসের রেঞ্জের বাইরে'
-                    });
-                }
-            } else {
-                // Use default month range
-                const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
-                const monthEnd = new Date(today.getFullYear(), today.getMonth() + 1, 0);
-
-                if (mealDate < monthStart || mealDate > monthEnd) {
-                    return res.status(400).json({
-                        message: 'এই তারিখ বর্তমান মাসের বাইরে'
-                    });
-                }
-            }
         }
+
+        // Get previous meal state for audit
+        const previousMeal = await Meal.findOne({
+            user: targetUserId,
+            date: mealDate,
+            mealType
+        });
 
         // Update or create meal record
         const meal = await Meal.findOneAndUpdate(
@@ -168,7 +187,9 @@ router.put('/toggle', protect, [
             date: mealDate,
             mealType,
             action: isOn ? 'toggle_on' : 'toggle_off',
-            previousState: { isOn: !isOn, count: isOn ? 0 : 1 },
+            previousState: previousMeal
+                ? { isOn: previousMeal.isOn, count: previousMeal.count }
+                : { isOn: null, count: null },
             newState: { isOn, count: isOn ? (count || 1) : 0 },
             changedBy: req.user._id,
             changedByRole: req.user.role,
@@ -186,7 +207,7 @@ router.put('/toggle', protect, [
 });
 
 // @route   PUT /api/meals/bulk-toggle
-// @desc    Bulk toggle meals on/off for a date range
+// @desc    Bulk toggle meals on/off for a date range (Dynamic with GlobalSettings)
 // @access  Private
 router.put('/bulk-toggle', protect, [
     body('startDate').notEmpty().withMessage('শুরুর তারিখ আবশ্যক'),
@@ -203,8 +224,6 @@ router.put('/bulk-toggle', protect, [
         const { startDate, endDate, isOn, mealType = 'lunch', userId } = req.body;
         const start = new Date(startDate);
         const end = new Date(endDate);
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
 
         // Validate date range
         if (start > end) {
@@ -227,23 +246,37 @@ router.put('/bulk-toggle', protect, [
             return res.status(403).json({ message: 'অন্যের মিল পরিবর্তন করার অনুমতি নেই' });
         }
 
-        // Users can only change future dates
-        if (!isManagerRole && start <= today) {
+        // Get dates in range
+        const dates = getDatesBetween(start, end);
+
+        // Filter dates based on dynamic permission check
+        const allowedDates = [];
+        const skippedDates = [];
+
+        for (const date of dates) {
+            const validation = await mealRulesService.validateMealToggle({
+                user: req.user,
+                date,
+                mealType,
+                targetUserId
+            });
+
+            if (validation.valid) {
+                allowedDates.push(date);
+            } else {
+                skippedDates.push({ date: formatDate(date), reason: validation.error });
+            }
+        }
+
+        if (allowedDates.length === 0) {
             return res.status(400).json({
-                message: 'আপনি শুধুমাত্র ভবিষ্যতের মিল অন/অফ করতে পারবেন'
+                message: 'কোনো পরিবর্তনযোগ্য তারিখ নেই',
+                skippedDates
             });
         }
 
-        // Get dates in range
-        const dates = getDatesBetween(start, end);
-        const futureDates = isManagerRole ? dates : dates.filter(d => d > today);
-
-        if (futureDates.length === 0) {
-            return res.status(400).json({ message: 'কোনো পরিবর্তনযোগ্য তারিখ নেই' });
-        }
-
         // Bulk update meals
-        const bulkOps = futureDates.map(date => ({
+        const bulkOps = allowedDates.map(date => ({
             updateOne: {
                 filter: { user: targetUserId, date, mealType },
                 update: {
@@ -259,7 +292,7 @@ router.put('/bulk-toggle', protect, [
         await Meal.bulkWrite(bulkOps);
 
         // Create audit logs for bulk operation
-        const auditLogs = futureDates.map(date => ({
+        const auditLogs = allowedDates.map(date => ({
             user: targetUserId,
             date,
             mealType,
@@ -276,8 +309,10 @@ router.put('/bulk-toggle', protect, [
 
         const mealTypeBn = mealType === 'lunch' ? 'দুপুরের খাবার' : 'রাতের খাবার';
         res.json({
-            message: `${futureDates.length}টি দিনের ${mealTypeBn} ${isOn ? 'অন' : 'অফ'} করা হয়েছে`,
-            updatedCount: futureDates.length,
+            message: `${allowedDates.length}টি দিনের ${mealTypeBn} ${isOn ? 'অন' : 'অফ'} করা হয়েছে`,
+            updatedCount: allowedDates.length,
+            skippedCount: skippedDates.length,
+            skippedDates: skippedDates.length > 0 ? skippedDates : undefined,
             startDate: formatDate(start),
             endDate: formatDate(end)
         });
@@ -328,7 +363,7 @@ router.put('/count', protect, isManager, [
 });
 
 // @route   GET /api/meals/summary
-// @desc    Get meal summary for a user for a month
+// @desc    Get meal summary for a user for a month (Dynamic with GlobalSettings)
 // @access  Private
 router.get('/summary', protect, async (req, res) => {
     try {
@@ -343,6 +378,9 @@ router.get('/summary', protect, async (req, res) => {
         if (userId && ['manager', 'admin', 'superadmin'].includes(req.user.role)) {
             targetUserId = userId;
         }
+
+        // Get global settings
+        const settings = await GlobalSettings.getSettings();
 
         // Get month settings
         let monthSettings = await MonthSettings.findOne({
@@ -362,12 +400,12 @@ router.get('/summary', protect, async (req, res) => {
             };
         }
 
-        // Get holidays
-        const holidays = await Holiday.find({
-            date: { $gte: monthSettings.startDate, $lte: monthSettings.endDate },
-            isActive: true
-        });
-        const holidayDates = holidays.map(h => h.date);
+        // Get holidays filtered by policy
+        const holidays = await mealRulesService.getApplicableHolidays(
+            monthSettings.startDate,
+            monthSettings.endDate,
+            settings
+        );
 
         // Get meals
         const meals = await Meal.find({
@@ -376,26 +414,29 @@ router.get('/summary', protect, async (req, res) => {
             mealType
         });
 
-        // Calculate totals
+        // Calculate totals using dynamic rules
         const dates = getDatesBetween(monthSettings.startDate, monthSettings.endDate);
         let totalMeals = 0;
         let totalDaysOn = 0;
 
-        dates.forEach(date => {
+        for (const date of dates) {
             const dateStr = formatDate(date);
             const manualMeal = meals.find(m => formatDate(m.date) === dateStr);
-            const isDefaultOff = isDefaultMealOff(date, holidayDates);
 
-            if (manualMeal) {
-                if (manualMeal.isOn) {
-                    totalMeals += manualMeal.count;
-                    totalDaysOn++;
-                }
-            } else if (!isDefaultOff) {
-                totalMeals++;
+            // Use dynamic effective status
+            const effectiveStatus = await mealRulesService.getEffectiveMealStatus({
+                date,
+                mealType,
+                manualMeal,
+                holidays,
+                settings
+            });
+
+            if (effectiveStatus.isOn) {
+                totalMeals += effectiveStatus.count;
                 totalDaysOn++;
             }
-        });
+        }
 
         // Use appropriate rate based on meal type
         const rate = mealType === 'lunch'

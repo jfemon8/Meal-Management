@@ -5,6 +5,7 @@ import { format, startOfMonth, endOfMonth, addMonths, subMonths } from 'date-fns
 import { bn } from 'date-fns/locale';
 import { FiCalendar, FiSave, FiChevronLeft, FiChevronRight, FiLock, FiEye, FiX } from 'react-icons/fi';
 import BDTIcon from '../../components/Icons/BDTIcon';
+import { ConfirmModal } from '../../components/ui/ConfirmModal';
 
 const MonthSettings = () => {
     const [currentMonth, setCurrentMonth] = useState(new Date());
@@ -23,6 +24,12 @@ const MonthSettings = () => {
     const [showPreview, setShowPreview] = useState(false);
     const [previewLoading, setPreviewLoading] = useState(false);
     const [previewData, setPreviewData] = useState(null);
+
+    // Confirm modal state
+    const [confirmModal, setConfirmModal] = useState({
+        isOpen: false,
+        isLoading: false
+    });
 
     useEffect(() => {
         loadSettings();
@@ -92,20 +99,24 @@ const MonthSettings = () => {
         }
     };
 
-    const handleFinalize = async () => {
+    const openFinalizeConfirm = () => {
         if (!settings?._id) {
             toast.error('প্রথমে সেটিংস সেভ করুন');
             return;
         }
+        setConfirmModal({ isOpen: true, isLoading: false });
+    };
 
-        if (!window.confirm('আপনি কি নিশ্চিত? ফাইনালাইজ করার পর এই মাসের সেটিংস পরিবর্তন করা যাবে না।')) return;
-
+    const handleFinalize = async () => {
+        setConfirmModal(prev => ({ ...prev, isLoading: true }));
         try {
             await monthSettingsService.finalizeMonth(settings._id);
             toast.success('মাস ফাইনালাইজ হয়েছে');
+            setConfirmModal({ isOpen: false, isLoading: false });
             loadSettings();
         } catch (error) {
             toast.error(error.response?.data?.message || 'ফাইনালাইজ করতে সমস্যা হয়েছে');
+            setConfirmModal(prev => ({ ...prev, isLoading: false }));
         }
     };
 
@@ -276,7 +287,7 @@ const MonthSettings = () => {
                                 {!settings.isFinalized && (
                                     <button
                                         type="button"
-                                        onClick={handleFinalize}
+                                        onClick={openFinalizeConfirm}
                                         className="btn bg-yellow-500 hover:bg-yellow-600 text-white flex items-center gap-2"
                                     >
                                         <FiLock />
@@ -299,6 +310,26 @@ const MonthSettings = () => {
                     <li>• প্রিভিউ দেখে ভেরিফাই করুন তারপর ফাইনালাইজ করুন</li>
                 </ul>
             </div>
+
+            {/* Finalize Confirm Modal */}
+            <ConfirmModal
+                isOpen={confirmModal.isOpen}
+                onClose={() => setConfirmModal({ isOpen: false, isLoading: false })}
+                onConfirm={handleFinalize}
+                title="মাস ফাইনালাইজ করুন"
+                message={
+                    <div className="space-y-2">
+                        <p>আপনি কি নিশ্চিত যে এই মাস ফাইনালাইজ করতে চান?</p>
+                        <p className="text-amber-600 dark:text-amber-400 font-medium">
+                            ফাইনালাইজ করার পর এই মাসের সেটিংস পরিবর্তন করা যাবে না।
+                        </p>
+                    </div>
+                }
+                confirmText="ফাইনালাইজ করুন"
+                cancelText="বাতিল"
+                variant="warning"
+                isLoading={confirmModal.isLoading}
+            />
 
             {/* Preview Modal */}
             {showPreview && (

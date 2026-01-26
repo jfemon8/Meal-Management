@@ -5,6 +5,7 @@ import { format, startOfMonth, endOfMonth } from 'date-fns';
 import { bn } from 'date-fns/locale';
 import { FiCoffee, FiUsers, FiCheck, FiTrash2, FiEdit2, FiRotateCcw, FiX } from 'react-icons/fi';
 import BDTIcon from '../../components/Icons/BDTIcon';
+import { ConfirmModal } from '../../components/ui/ConfirmModal';
 
 const BreakfastManagement = () => {
     const [breakfasts, setBreakfasts] = useState([]);
@@ -36,6 +37,10 @@ const BreakfastManagement = () => {
     const [reverseModal, setReverseModal] = useState({ open: false, breakfast: null });
     const [reverseReason, setReverseReason] = useState('');
     const [reverseSubmitting, setReverseSubmitting] = useState(false);
+
+    // Confirm modal state for deduct/delete
+    const [deductConfirm, setDeductConfirm] = useState({ isOpen: false, breakfast: null, isLoading: false });
+    const [deleteConfirm, setDeleteConfirm] = useState({ isOpen: false, breakfast: null, isLoading: false });
 
     useEffect(() => {
         loadData();
@@ -186,27 +191,39 @@ const BreakfastManagement = () => {
         setCostMode('equal');
     };
 
-    const handleDeduct = async (id) => {
-        if (!window.confirm('আপনি কি নিশ্চিত যে এই নাস্তার খরচ কাটতে চান?')) return;
+    const openDeductConfirm = (breakfast) => {
+        setDeductConfirm({ isOpen: true, breakfast, isLoading: false });
+    };
 
+    const handleDeduct = async () => {
+        if (!deductConfirm.breakfast) return;
+        setDeductConfirm(prev => ({ ...prev, isLoading: true }));
         try {
-            await breakfastService.deductBreakfast(id);
+            await breakfastService.deductBreakfast(deductConfirm.breakfast._id);
             toast.success('খরচ সফলভাবে কাটা হয়েছে');
+            setDeductConfirm({ isOpen: false, breakfast: null, isLoading: false });
             loadData();
         } catch (error) {
             toast.error(error.response?.data?.message || 'খরচ কাটতে সমস্যা হয়েছে');
+            setDeductConfirm(prev => ({ ...prev, isLoading: false }));
         }
     };
 
-    const handleDelete = async (id) => {
-        if (!window.confirm('আপনি কি নিশ্চিত যে এই রেকর্ড মুছতে চান?')) return;
+    const openDeleteConfirm = (breakfast) => {
+        setDeleteConfirm({ isOpen: true, breakfast, isLoading: false });
+    };
 
+    const handleDelete = async () => {
+        if (!deleteConfirm.breakfast) return;
+        setDeleteConfirm(prev => ({ ...prev, isLoading: true }));
         try {
-            await breakfastService.deleteBreakfast(id);
+            await breakfastService.deleteBreakfast(deleteConfirm.breakfast._id);
             toast.success('রেকর্ড মুছে ফেলা হয়েছে');
+            setDeleteConfirm({ isOpen: false, breakfast: null, isLoading: false });
             loadData();
         } catch (error) {
             toast.error(error.response?.data?.message || 'মুছতে সমস্যা হয়েছে');
+            setDeleteConfirm(prev => ({ ...prev, isLoading: false }));
         }
     };
 
@@ -606,14 +623,14 @@ const BreakfastManagement = () => {
                                                     <FiEdit2 className="w-4 h-4" />
                                                 </button>
                                                 <button
-                                                    onClick={() => handleDeduct(breakfast._id)}
+                                                    onClick={() => openDeductConfirm(breakfast)}
                                                     className="btn btn-primary text-sm flex items-center gap-1"
                                                 >
                                                     <FiCheck className="w-4 h-4" />
                                                     খরচ কাটুন
                                                 </button>
                                                 <button
-                                                    onClick={() => handleDelete(breakfast._id)}
+                                                    onClick={() => openDeleteConfirm(breakfast)}
                                                     className="btn btn-danger text-sm flex items-center gap-1"
                                                 >
                                                     <FiTrash2 className="w-4 h-4" />
@@ -791,6 +808,59 @@ const BreakfastManagement = () => {
                     </div>
                 </div>
             )}
+
+            {/* Deduct Confirm Modal */}
+            <ConfirmModal
+                isOpen={deductConfirm.isOpen}
+                onClose={() => setDeductConfirm({ isOpen: false, breakfast: null, isLoading: false })}
+                onConfirm={handleDeduct}
+                title="নাস্তার খরচ কাটুন"
+                message={
+                    <div className="space-y-2">
+                        <p>আপনি কি নিশ্চিত যে এই নাস্তার খরচ কাটতে চান?</p>
+                        {deductConfirm.breakfast && (
+                            <div className="p-3 bg-gray-100 dark:bg-gray-700 rounded-lg text-sm">
+                                <p><strong>তারিখ:</strong> {format(new Date(deductConfirm.breakfast.date), 'dd MMMM yyyy', { locale: bn })}</p>
+                                <p><strong>মোট খরচ:</strong> ৳{deductConfirm.breakfast.totalCost}</p>
+                                <p><strong>অংশগ্রহণকারী:</strong> {deductConfirm.breakfast.participants?.length} জন</p>
+                            </div>
+                        )}
+                        <p className="text-amber-600 dark:text-amber-400 text-sm">
+                            এই অপারেশন সকল অংশগ্রহণকারীর ব্যালেন্স থেকে টাকা কাটবে।
+                        </p>
+                    </div>
+                }
+                confirmText="খরচ কাটুন"
+                cancelText="বাতিল"
+                variant="warning"
+                isLoading={deductConfirm.isLoading}
+            />
+
+            {/* Delete Confirm Modal */}
+            <ConfirmModal
+                isOpen={deleteConfirm.isOpen}
+                onClose={() => setDeleteConfirm({ isOpen: false, breakfast: null, isLoading: false })}
+                onConfirm={handleDelete}
+                title="রেকর্ড মুছুন"
+                message={
+                    <div className="space-y-2">
+                        <p>আপনি কি নিশ্চিত যে এই নাস্তার রেকর্ড মুছতে চান?</p>
+                        {deleteConfirm.breakfast && (
+                            <div className="p-3 bg-gray-100 dark:bg-gray-700 rounded-lg text-sm">
+                                <p><strong>তারিখ:</strong> {format(new Date(deleteConfirm.breakfast.date), 'dd MMMM yyyy', { locale: bn })}</p>
+                                <p><strong>মোট খরচ:</strong> ৳{deleteConfirm.breakfast.totalCost}</p>
+                            </div>
+                        )}
+                        <p className="text-red-600 dark:text-red-400 text-sm font-medium">
+                            এই অপারেশন পূর্বাবস্থায় ফেরানো যাবে না!
+                        </p>
+                    </div>
+                }
+                confirmText="মুছুন"
+                cancelText="বাতিল"
+                variant="danger"
+                isLoading={deleteConfirm.isLoading}
+            />
 
             {/* Reverse Modal */}
             {reverseModal.open && (

@@ -27,6 +27,7 @@ import {
     FiDownload
 } from 'react-icons/fi';
 import BDTIcon from '../Icons/BDTIcon';
+import { RoleBadge, ManagerOnly, AdminOnly, SuperAdminOnly } from '../Auth/RoleBasedUI';
 
 const Layout = () => {
     const { user, logout, isManager, isAdmin, isSuperAdmin } = useAuth();
@@ -131,15 +132,7 @@ const Layout = () => {
                     <div className="flex-1">
                         <h1 className="text-xl font-bold text-primary-600 dark:text-primary-400">মিল ম্যানেজমেন্ট</h1>
                         <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{user?.name}</p>
-                        <span className={`inline-block mt-2 px-2 py-1 text-xs rounded-full ${user?.role === 'superadmin' ? 'bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-200' :
-                                user?.role === 'admin' ? 'bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-200' :
-                                    user?.role === 'manager' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-200' :
-                                        'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-200'
-                            }`}>
-                            {user?.role === 'superadmin' ? 'সুপার এডমিন' :
-                                user?.role === 'admin' ? 'এডমিন' :
-                                    user?.role === 'manager' ? 'ম্যানেজার' : 'ইউজার'}
-                        </span>
+                        <RoleBadge role={user?.role || 'user'} size="sm" className="mt-2" />
                     </div>
                     <button
                         onClick={toggleTheme}
@@ -160,34 +153,34 @@ const Layout = () => {
                     </div>
 
                     {/* Manager Menu */}
-                    {isManager && (
+                    <ManagerOnly>
                         <div className="mb-4 pt-4 border-t dark:border-gray-700">
                             <p className="text-xs text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-2 px-4">ম্যানেজার</p>
                             {managerMenuItems.map((item) => (
                                 <NavLink key={item.path} item={item} />
                             ))}
                         </div>
-                    )}
+                    </ManagerOnly>
 
                     {/* Admin Menu */}
-                    {isAdmin && (
+                    <AdminOnly>
                         <div className="mb-4 pt-4 border-t dark:border-gray-700">
                             <p className="text-xs text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-2 px-4">এডমিন</p>
                             {adminMenuItems.map((item) => (
                                 <NavLink key={item.path} item={item} />
                             ))}
                         </div>
-                    )}
+                    </AdminOnly>
 
                     {/* SuperAdmin Menu */}
-                    {isSuperAdmin && (
+                    <SuperAdminOnly>
                         <div className="pt-4 border-t dark:border-gray-700">
                             <p className="text-xs text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-2 px-4">সুপার এডমিন</p>
                             {superAdminMenuItems.map((item) => (
                                 <NavLink key={item.path} item={item} />
                             ))}
                         </div>
-                    )}
+                    </SuperAdminOnly>
                 </nav>
 
                 <div className="absolute bottom-0 left-0 right-0 p-4 border-t dark:border-gray-700 bg-white dark:bg-gray-800">

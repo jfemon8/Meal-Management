@@ -4,8 +4,89 @@ const { body, validationResult } = require('express-validator');
 const Breakfast = require('../models/Breakfast');
 const User = require('../models/User');
 const Transaction = require('../models/Transaction');
+const GlobalSettings = require('../models/GlobalSettings');
 const { protect, isManager } = require('../middleware/auth');
 const { formatDate } = require('../utils/dateUtils');
+
+/**
+ * Helper function to deduct breakfast cost from participants
+ * @param {Object} breakfast - Breakfast document
+ * @param {Object} performedBy - User who performed the action
+ * @returns {Array} - Deduction results
+ */
+const deductBreakfastCost = async (breakfast, performedBy) => {
+    const deductionResults = [];
+
+    for (const participant of breakfast.participants) {
+        if (participant.deducted) continue;
+
+        const user = await User.findById(participant.user);
+        if (!user) continue;
+
+        // Check if balance is frozen
+        if (user.balances.breakfast.isFrozen) {
+            deductionResults.push({
+                user: user.name,
+                cost: participant.cost,
+                error: 'Balance is frozen'
+            });
+            continue;
+        }
+
+        const previousBalance = user.balances.breakfast.amount;
+        const newBalance = previousBalance - participant.cost;
+
+        user.balances.breakfast.amount = newBalance;
+        await user.save();
+
+        // Create transaction record
+        await Transaction.create({
+            user: user._id,
+            type: 'deduction',
+            balanceType: 'breakfast',
+            amount: -participant.cost,
+            previousBalance,
+            newBalance,
+            description: `নাস্তার খরচ - ${formatDate(breakfast.date)}`,
+            reference: breakfast._id,
+            referenceModel: 'Breakfast',
+            performedBy: performedBy._id
+        });
+
+        // Update participant as deducted
+        participant.deducted = true;
+        participant.deductedAt = new Date();
+
+        deductionResults.push({
+            user: user.name,
+            cost: participant.cost,
+            newBalance
+        });
+    }
+
+    return deductionResults;
+};
+
+// @route   GET /api/breakfast/settings
+// @desc    Get breakfast policy settings
+// @access  Private (Manager+)
+router.get('/settings', protect, isManager, async (req, res) => {
+    try {
+        const settings = await GlobalSettings.getSettings();
+        const breakfastPolicy = settings.breakfastPolicy || {
+            autoDeduct: true,
+            requireConfirmation: false
+        };
+
+        res.json({
+            autoDeduct: breakfastPolicy.autoDeduct,
+            requireConfirmation: breakfastPolicy.requireConfirmation
+        });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'সার্ভার এরর' });
+    }
+});
 
 // @route   GET /api/breakfast
 // @desc    Get breakfast records for a date range
@@ -85,6 +166,7 @@ router.get('/user', protect, async (req, res) => {
 // Supports two modes:
 // 1. Equal split: { totalCost, participants: [userId, ...] }
 // 2. Individual costs: { participantCosts: [{userId, cost}, ...] }
+// Auto-deduction is controlled by GlobalSettings.breakfastPolicy.autoDeduct
 router.post('/', protect, isManager, [
     body('date').notEmpty().withMessage('তারিখ আবশ্যক')
 ], async (req, res) => {
@@ -94,7 +176,7 @@ router.post('/', protect, isManager, [
             return res.status(400).json({ errors: errors.array() });
         }
 
-        const { date, totalCost, description, participants, participantCosts } = req.body;
+        const { date, totalCost, description, participants, participantCosts, skipAutoDeduct } = req.body;
         const breakfastDate = new Date(date);
 
         // Check if breakfast already exists for this date
@@ -141,9 +223,32 @@ router.post('/', protect, isManager, [
             submittedBy: req.user._id
         });
 
+        // Check auto-deduction settings
+        const settings = await GlobalSettings.getSettings();
+        const breakfastPolicy = settings.breakfastPolicy || { autoDeduct: true, requireConfirmation: false };
+
+        let deductionResults = null;
+        let autoDeducted = false;
+
+        // Auto-deduct if enabled and not skipped by request
+        if (breakfastPolicy.autoDeduct && !skipAutoDeduct && !breakfastPolicy.requireConfirmation) {
+            deductionResults = await deductBreakfastCost(breakfast, req.user);
+            breakfast.isFinalized = true;
+            await breakfast.save();
+            autoDeducted = true;
+        }
+
         res.status(201).json({
-            message: 'নাস্তার খরচ সফলভাবে জমা হয়েছে',
-            breakfast
+            message: autoDeducted
+                ? 'নাস্তার খরচ সফলভাবে জমা ও ওয়ালেট থেকে কাটা হয়েছে'
+                : 'নাস্তার খরচ সফলভাবে জমা হয়েছে',
+            breakfast,
+            autoDeducted,
+            deductions: deductionResults,
+            settings: {
+                autoDeduct: breakfastPolicy.autoDeduct,
+                requireConfirmation: breakfastPolicy.requireConfirmation
+            }
         });
     } catch (error) {
         console.error(error);
@@ -165,55 +270,8 @@ router.post('/:id/deduct', protect, isManager, async (req, res) => {
             return res.status(400).json({ message: 'এই নাস্তার খরচ আগেই কাটা হয়েছে' });
         }
 
-        const deductionResults = [];
-
-        // Deduct from each participant
-        for (const participant of breakfast.participants) {
-            if (participant.deducted) continue;
-
-            const user = await User.findById(participant.user);
-            if (!user) continue;
-
-            // Check if balance is frozen
-            if (user.balances.breakfast.isFrozen) {
-                deductionResults.push({
-                    user: user.name,
-                    cost: participant.cost,
-                    error: 'Balance is frozen'
-                });
-                continue;
-            }
-
-            const previousBalance = user.balances.breakfast.amount;
-            const newBalance = previousBalance - participant.cost;
-
-            user.balances.breakfast.amount = newBalance;
-            await user.save();
-
-            // Create transaction record
-            await Transaction.create({
-                user: user._id,
-                type: 'deduction',
-                balanceType: 'breakfast',
-                amount: -participant.cost,
-                previousBalance,
-                newBalance,
-                description: `নাস্তার খরচ - ${formatDate(breakfast.date)}`,
-                reference: breakfast._id,
-                referenceModel: 'Breakfast',
-                performedBy: req.user._id
-            });
-
-            // Update participant as deducted
-            participant.deducted = true;
-            participant.deductedAt = new Date();
-
-            deductionResults.push({
-                user: user.name,
-                cost: participant.cost,
-                newBalance
-            });
-        }
+        // Use helper function for deduction
+        const deductionResults = await deductBreakfastCost(breakfast, req.user);
 
         breakfast.isFinalized = true;
         await breakfast.save();

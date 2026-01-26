@@ -94,6 +94,20 @@ const globalSettingsSchema = new mongoose.Schema({
         }
     },
 
+    // Breakfast policy
+    breakfastPolicy: {
+        // Auto deduct from wallet when manager submits breakfast cost
+        autoDeduct: {
+            type: Boolean,
+            default: true
+        },
+        // Require manager confirmation before auto-deduct
+        requireConfirmation: {
+            type: Boolean,
+            default: false
+        }
+    },
+
     // Notification settings
     notifications: {
         // Send daily meal reminder
