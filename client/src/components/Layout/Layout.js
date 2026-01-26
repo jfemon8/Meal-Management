@@ -23,7 +23,8 @@ import {
     FiDatabase,
     FiGrid,
     FiFlag,
-    FiTool
+    FiTool,
+    FiDownload
 } from 'react-icons/fi';
 import BDTIcon from '../Icons/BDTIcon';
 
@@ -54,6 +55,7 @@ const Layout = () => {
         { path: '/manager/daily-meals', icon: FiClipboard, label: 'দৈনিক মিল' },
         { path: '/manager/user-meals', icon: FiCalendar, label: 'ইউজার মিল ক্যালেন্ডার' },
         { path: '/manager/group-users', icon: FiGrid, label: 'গ্রুপের সদস্য' },
+        { path: '/manager/lunch-statement', icon: FiDownload, label: 'লাঞ্চ স্টেটমেন্ট' },
         { path: '/manager/breakfast', icon: FiCoffee, label: 'নাস্তা ম্যানেজ' },
         { path: '/manager/balance', icon: BDTIcon, label: 'ব্যালেন্স ম্যানেজ' },
         { path: '/manager/users', icon: FiUsers, label: 'সকল ইউজার' },

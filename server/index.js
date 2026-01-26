@@ -56,6 +56,7 @@ app.use('/api/notifications', require('./routes/notifications'));
 app.use('/api/audit-logs', require('./routes/auditLogs'));
 app.use('/api/backup', require('./routes/backup'));
 app.use('/api/metrics', require('./routes/metrics'));
+app.use('/api/group-reports', require('./routes/groupReports'));
 
 // Error logging middleware (before error handler)
 app.use(errorLogger);
