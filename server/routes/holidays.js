@@ -4,6 +4,7 @@ const { body, validationResult } = require('express-validator');
 const Holiday = require('../models/Holiday');
 const { protect, isManager, isAdmin } = require('../middleware/auth');
 const { syncHolidays, fetchBangladeshHolidays, checkApiAvailability } = require('../services/holidaySync');
+const { formatDateISO, nowBD, startOfDayBD, toBDTime, isOddSaturday } = require('../utils/dateUtils');
 
 // Bangladesh public holidays 2026 (sample data)
 const defaultHolidays2026 = [
@@ -23,8 +24,7 @@ const defaultHolidays2026 = [
 router.get('/upcoming', protect, async (req, res) => {
     try {
         const days = parseInt(req.query.days) || 30;
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
+        const today = startOfDayBD();
 
         const endDate = new Date(today);
         endDate.setDate(endDate.getDate() + days);
@@ -41,11 +41,7 @@ router.get('/upcoming', protect, async (req, res) => {
 
         while (currentDate <= endDate) {
             const dayOfWeek = currentDate.getDay();
-            // Use local date formatting to avoid UTC timezone shift
-            const year = currentDate.getFullYear();
-            const month = String(currentDate.getMonth() + 1).padStart(2, '0');
-            const day = String(currentDate.getDate()).padStart(2, '0');
-            const dateStr = `${year}-${month}-${day}`;
+            const dateStr = formatDateISO(currentDate);
 
             // Check if it's Friday (5)
             if (dayOfWeek === 5) {
@@ -82,12 +78,7 @@ router.get('/upcoming', protect, async (req, res) => {
 
         // Add holidays to the list
         holidays.forEach(holiday => {
-            // Use local date formatting for holidays too
-            const hDate = new Date(holiday.date);
-            const hYear = hDate.getFullYear();
-            const hMonth = String(hDate.getMonth() + 1).padStart(2, '0');
-            const hDay = String(hDate.getDate()).padStart(2, '0');
-            const dateStr = `${hYear}-${hMonth}-${hDay}`;
+            const dateStr = formatDateISO(holiday.date);
             // Check if this date is not already in offDays
             const existingIdx = offDays.findIndex(d => d.date === dateStr);
             if (existingIdx === -1) {

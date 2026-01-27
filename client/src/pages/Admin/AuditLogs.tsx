@@ -2,8 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { FiActivity, FiSearch, FiFilter, FiRefreshCw, FiUser, FiCalendar, FiChevronLeft, FiChevronRight } from 'react-icons/fi';
 import api from '../../services/api';
 import toast from 'react-hot-toast';
-import { format } from 'date-fns';
-import { bn } from 'date-fns/locale';
+import { formatDateTimeShort } from '../../utils/dateUtils';
 
 interface AuditLog {
     _id: string;
@@ -256,7 +255,7 @@ const AuditLogs: React.FC = () => {
                                         <td className="px-4 py-3 text-sm text-gray-600 dark:text-gray-400 whitespace-nowrap">
                                             <div className="flex items-center gap-1">
                                                 <FiCalendar className="w-3 h-3" />
-                                                {format(new Date(log.createdAt), 'dd MMM yyyy, hh:mm a', { locale: bn })}
+                                                {formatDateTimeShort(new Date(log.createdAt))}
                                             </div>
                                         </td>
                                         <td className="px-4 py-3">

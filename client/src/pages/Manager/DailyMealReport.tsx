@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, type ChangeEvent } from 'react';
 import { reportService } from '../../services/mealService';
-import { format, subDays, addDays } from 'date-fns';
-import { bn } from 'date-fns/locale';
+import { subDays, addDays } from 'date-fns';
+import { formatDateISO, formatDateWithDay, formatDateBn, formatDateTimeShort, nowBD, getDayNameBn, toBDTime } from '../../utils/dateUtils';
 import {
   FiChevronLeft,
   FiChevronRight,
@@ -49,7 +49,7 @@ interface DailyReport {
 // ============================================
 
 const DailyMealReport: React.FC = () => {
-  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
+  const [selectedDate, setSelectedDate] = useState<Date>(nowBD());
   const [mealType, setMealType] = useState<MealType>('lunch');
   const [report, setReport] = useState<DailyReport | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
@@ -62,7 +62,7 @@ const DailyMealReport: React.FC = () => {
   const loadReport = async (): Promise<void> => {
     setLoading(true);
     try {
-      const dateStr = format(selectedDate, 'yyyy-MM-dd');
+      const dateStr = formatDateISO(selectedDate);
       const response = await reportService.getDailyReport(dateStr, mealType);
       setReport(response as DailyReport);
     } catch (error) {
@@ -74,7 +74,7 @@ const DailyMealReport: React.FC = () => {
 
   const handlePrint = useReactToPrint({
     content: () => printRef.current,
-    documentTitle: `দৈনিক-মিল-রিপোর্ট-${format(selectedDate, 'yyyy-MM-dd')}`,
+    documentTitle: `দৈনিক-মিল-রিপোর্ট-${formatDateISO(selectedDate)}`,
   });
 
   const prevDay = (): void => setSelectedDate(subDays(selectedDate, 1));
@@ -120,14 +120,14 @@ const DailyMealReport: React.FC = () => {
             <div className="text-center">
               <input
                 type="date"
-                value={format(selectedDate, 'yyyy-MM-dd')}
+                value={formatDateISO(selectedDate)}
                 onChange={(e: ChangeEvent<HTMLInputElement>) =>
                   setSelectedDate(new Date(e.target.value))
                 }
                 className="input text-center"
               />
               <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                {format(selectedDate, 'EEEE', { locale: bn })}
+                {getDayNameBn(toBDTime(selectedDate).getDay())}
               </p>
             </div>
             <button
@@ -172,7 +172,7 @@ const DailyMealReport: React.FC = () => {
             <h1 className="text-2xl font-bold">মিল ম্যানেজমেন্ট সিস্টেম</h1>
             <h2 className="text-xl mt-2">
               দৈনিক {getMealTypeBn()} মিল রিপোর্ট -{' '}
-              {format(selectedDate, 'dd MMMM yyyy', { locale: bn })}
+              {formatDateBn(selectedDate)}
             </h2>
           </div>
 
@@ -325,7 +325,7 @@ const DailyMealReport: React.FC = () => {
           {/* Print Footer */}
           <div className="hidden print:block text-center mt-8 pt-4 border-t text-sm text-gray-500">
             <p>
-              তৈরি: {format(new Date(), 'dd MMMM yyyy, hh:mm a', { locale: bn })}
+              তৈরি: {formatDateTimeShort(nowBD())}
             </p>
           </div>
         </div>

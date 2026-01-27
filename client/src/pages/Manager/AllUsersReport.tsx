@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { reportService } from '../../services/mealService';
-import { format, subMonths, addMonths } from 'date-fns';
-import { bn } from 'date-fns/locale';
+import { subMonths, addMonths } from 'date-fns';
+import { formatMonthYear, formatDateISO, formatDateBn, formatDateTimeShort, nowBD } from '../../utils/dateUtils';
 import {
   FiPrinter,
   FiChevronLeft,
@@ -73,7 +73,7 @@ interface AllUsersReportData {
 // ============================================
 
 const AllUsersReport: React.FC = () => {
-  const [currentMonth, setCurrentMonth] = useState<Date>(new Date());
+  const [currentMonth, setCurrentMonth] = useState<Date>(nowBD());
   const [report, setReport] = useState<AllUsersReportData | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [exporting, setExporting] = useState<boolean>(false);
@@ -100,7 +100,7 @@ const AllUsersReport: React.FC = () => {
 
   const handlePrint = useReactToPrint({
     content: () => printRef.current,
-    documentTitle: `সব-ইউজার-রিপোর্ট-${format(currentMonth, 'yyyy-MM')}`,
+    documentTitle: `সব-ইউজার-রিপোর্ট-${formatDateISO(currentMonth).slice(0, 7)}`,
   });
 
   const handleExportCSV = async (): Promise<void> => {
@@ -186,7 +186,7 @@ const AllUsersReport: React.FC = () => {
             <FiChevronLeft className="w-6 h-6 dark:text-gray-300" />
           </button>
           <h2 className="text-xl font-semibold dark:text-gray-100">
-            {format(currentMonth, 'MMMM yyyy', { locale: bn })}
+            {formatMonthYear(currentMonth)}
           </h2>
           <button
             onClick={nextMonth}
@@ -205,7 +205,7 @@ const AllUsersReport: React.FC = () => {
             <h1 className="text-2xl font-bold">মিল ম্যানেজমেন্ট সিস্টেম</h1>
             <h2 className="text-xl mt-2">
               মাসিক রিপোর্ট (সকল ইউজার) -{' '}
-              {format(currentMonth, 'MMMM yyyy', { locale: bn })}
+              {formatMonthYear(currentMonth)}
             </h2>
           </div>
 
@@ -218,17 +218,13 @@ const AllUsersReport: React.FC = () => {
               <div>
                 <p className="text-sm text-gray-500 dark:text-gray-400">শুরু</p>
                 <p className="font-medium dark:text-gray-200">
-                  {format(new Date(report.period.startDate), 'dd MMM yyyy', {
-                    locale: bn,
-                  })}
+                  {formatDateBn(report.period.startDate)}
                 </p>
               </div>
               <div>
                 <p className="text-sm text-gray-500 dark:text-gray-400">শেষ</p>
                 <p className="font-medium dark:text-gray-200">
-                  {format(new Date(report.period.endDate), 'dd MMM yyyy', {
-                    locale: bn,
-                  })}
+                  {formatDateBn(report.period.endDate)}
                 </p>
               </div>
               <div>
@@ -366,7 +362,7 @@ const AllUsersReport: React.FC = () => {
           {/* Print Footer */}
           <div className="hidden print:block text-center mt-8 pt-4 border-t text-sm text-gray-500">
             <p>
-              তৈরি: {format(new Date(), 'dd MMMM yyyy, hh:mm a', { locale: bn })}
+              তৈরি: {formatDateTimeShort(nowBD())}
             </p>
           </div>
         </div>

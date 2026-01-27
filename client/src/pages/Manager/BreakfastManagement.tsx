@@ -1,8 +1,8 @@
 import React, { useState, useEffect, type FormEvent, type ChangeEvent } from 'react';
 import { breakfastService, userService } from '../../services/mealService';
 import toast from 'react-hot-toast';
-import { format, startOfMonth, endOfMonth } from 'date-fns';
-import { bn } from 'date-fns/locale';
+import { startOfMonth, endOfMonth } from 'date-fns';
+import { formatDateISO, formatDateBn, nowBD } from '../../utils/dateUtils';
 import {
   FiCoffee,
   FiUsers,
@@ -65,7 +65,7 @@ const BreakfastManagement: React.FC = () => {
   const [showForm, setShowForm] = useState<boolean>(false);
   const [costMode, setCostMode] = useState<CostMode>('equal');
   const [formData, setFormData] = useState<FormData>({
-    date: format(new Date(), 'yyyy-MM-dd'),
+    date: formatDateISO(nowBD()),
     totalCost: '',
     description: '',
     participants: [],
@@ -113,9 +113,9 @@ const BreakfastManagement: React.FC = () => {
 
   const loadData = async (): Promise<void> => {
     try {
-      const today = new Date();
-      const startDate = format(startOfMonth(today), 'yyyy-MM-dd');
-      const endDate = format(endOfMonth(today), 'yyyy-MM-dd');
+      const today = nowBD();
+      const startDate = formatDateISO(startOfMonth(today));
+      const endDate = formatDateISO(endOfMonth(today));
 
       const [breakfastsRes, usersRes] = await Promise.all([
         breakfastService.getBreakfasts(startDate, endDate),
@@ -253,7 +253,7 @@ const BreakfastManagement: React.FC = () => {
 
   const resetForm = (): void => {
     setFormData({
-      date: format(new Date(), 'yyyy-MM-dd'),
+      date: formatDateISO(nowBD()),
       totalCost: '',
       description: '',
       participants: [],
@@ -719,9 +719,7 @@ const BreakfastManagement: React.FC = () => {
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                   <div className="flex-1">
                     <p className="font-semibold text-gray-800 dark:text-gray-100">
-                      {format(new Date(breakfast.date), 'dd MMMM yyyy', {
-                        locale: bn,
-                      })}
+                      {formatDateBn(breakfast.date)}
                       {hasVariedCosts(breakfast) && (
                         <span className="ml-2 text-xs px-2 py-0.5 bg-purple-100 dark:bg-purple-900 text-purple-700 dark:text-purple-300 rounded">
                           ভিন্ন ভিন্ন খরচ
@@ -996,9 +994,7 @@ const BreakfastManagement: React.FC = () => {
               <div className="p-3 bg-gray-100 dark:bg-gray-700 rounded-lg text-sm">
                 <p>
                   <strong>তারিখ:</strong>{' '}
-                  {format(new Date(deductConfirm.breakfast.date), 'dd MMMM yyyy', {
-                    locale: bn,
-                  })}
+                  {formatDateBn(deductConfirm.breakfast.date)}
                 </p>
                 <p>
                   <strong>মোট খরচ:</strong> ৳{deductConfirm.breakfast.totalCost}
@@ -1035,9 +1031,7 @@ const BreakfastManagement: React.FC = () => {
               <div className="p-3 bg-gray-100 dark:bg-gray-700 rounded-lg text-sm">
                 <p>
                   <strong>তারিখ:</strong>{' '}
-                  {format(new Date(deleteConfirm.breakfast.date), 'dd MMMM yyyy', {
-                    locale: bn,
-                  })}
+                  {formatDateBn(deleteConfirm.breakfast.date)}
                 </p>
                 <p>
                   <strong>মোট খরচ:</strong> ৳{deleteConfirm.breakfast.totalCost}

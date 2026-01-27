@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { reportService } from '../../services/mealService';
-import { format, subMonths, addMonths } from 'date-fns';
-import { bn } from 'date-fns/locale';
+import { subMonths, addMonths } from 'date-fns';
+import { formatMonthYear, formatDateISO, formatDateBn, formatDateTimeShort, nowBD } from '../../utils/dateUtils';
 import { FiPrinter, FiChevronLeft, FiChevronRight, FiDownload, FiLock } from 'react-icons/fi';
 import { useReactToPrint } from 'react-to-print';
 import html2pdf from 'html2pdf.js';
@@ -74,7 +74,7 @@ interface MonthlyReportData {
 // ============================================
 
 const MonthlyReport: React.FC = () => {
-  const [currentMonth, setCurrentMonth] = useState<Date>(new Date());
+  const [currentMonth, setCurrentMonth] = useState<Date>(nowBD());
   const [report, setReport] = useState<MonthlyReportData | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [downloading, setDownloading] = useState<boolean>(false);
@@ -100,7 +100,7 @@ const MonthlyReport: React.FC = () => {
 
   const handlePrint = useReactToPrint({
     content: () => printRef.current,
-    documentTitle: `মিল-রিপোর্ট-${format(currentMonth, 'yyyy-MM')}`,
+    documentTitle: `মিল-রিপোর্ট-${formatDateISO(currentMonth).slice(0, 7)}`,
   });
 
   const handleDownloadPDF = async (): Promise<void> => {
@@ -110,7 +110,7 @@ const MonthlyReport: React.FC = () => {
       const element = printRef.current;
       const opt = {
         margin: 10,
-        filename: `মিল-রিপোর্ট-${format(currentMonth, 'yyyy-MM')}.pdf`,
+        filename: `মিল-রিপোর্ট-${formatDateISO(currentMonth).slice(0, 7)}.pdf`,
         image: { type: 'jpeg' as const, quality: 0.98 },
         html2canvas: { scale: 2, useCORS: true },
         jsPDF: { unit: 'mm' as const, format: 'a4' as const, orientation: 'portrait' as const },
@@ -170,7 +170,7 @@ const MonthlyReport: React.FC = () => {
           </button>
           <div className="flex items-center gap-2">
             <h2 className="text-xl font-semibold dark:text-gray-100">
-              {format(currentMonth, 'MMMM yyyy', { locale: bn })}
+              {formatMonthYear(currentMonth)}
             </h2>
             {report?.period?.isFinalized && (
               <span className="inline-flex items-center gap-1 px-2 py-1 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 text-xs rounded-full">
@@ -191,7 +191,7 @@ const MonthlyReport: React.FC = () => {
           {/* Print Header */}
           <div className="hidden print:block text-center mb-8">
             <h1 className="text-2xl font-bold">মিল ম্যানেজমেন্ট সিস্টেম</h1>
-            <h2 className="text-xl mt-2">মাসিক রিপোর্ট - {format(currentMonth, 'MMMM yyyy', { locale: bn })}</h2>
+            <h2 className="text-xl mt-2">মাসিক রিপোর্ট - {formatMonthYear(currentMonth)}</h2>
             <p className="text-gray-600 mt-1">
               {report.user.name} ({report.user.email})
             </p>
@@ -267,7 +267,7 @@ const MonthlyReport: React.FC = () => {
                   <tbody>
                     {report.breakfast.details.map((item, index) => (
                       <tr key={index} className="border-b">
-                        <td className="py-2">{format(new Date(item.date), 'dd MMM', { locale: bn })}</td>
+                        <td className="py-2">{formatDateBn(item.date)}</td>
                         <td className="py-2">{item.description || '-'}</td>
                         <td className="py-2 text-right">৳{item.myCost}</td>
                         <td className="py-2 text-center">
@@ -304,7 +304,7 @@ const MonthlyReport: React.FC = () => {
                 <tbody>
                   {report.lunch.dailyDetails.map((day, index) => (
                     <tr key={index} className={`border-b ${day.isHoliday ? 'bg-yellow-50' : ''}`}>
-                      <td className="py-2">{format(new Date(day.date), 'dd MMM', { locale: bn })}</td>
+                      <td className="py-2">{formatDateBn(day.date)}</td>
                       <td className="py-2">{day.dayName}</td>
                       <td className="py-2 text-center">
                         <span
@@ -334,7 +334,7 @@ const MonthlyReport: React.FC = () => {
                 {report.holidays.map((holiday, index) => (
                   <li key={index} className="flex items-center gap-3 text-sm">
                     <span className="text-gray-500">
-                      {format(new Date(holiday.date), 'dd MMMM', { locale: bn })}
+                      {formatDateBn(holiday.date)}
                     </span>
                     <span className="text-gray-700">-</span>
                     <span className="font-medium">{holiday.name}</span>
@@ -346,7 +346,7 @@ const MonthlyReport: React.FC = () => {
 
           {/* Print Footer */}
           <div className="hidden print:block text-center mt-8 pt-4 border-t text-sm text-gray-500">
-            <p>তৈরি: {format(new Date(), 'dd MMMM yyyy, hh:mm a', { locale: bn })}</p>
+            <p>তৈরি: {formatDateTimeShort(nowBD())}</p>
           </div>
         </div>
       )}

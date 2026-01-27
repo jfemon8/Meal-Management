@@ -1,6 +1,5 @@
 import React, { useState, useMemo, type ChangeEvent } from 'react';
-import { format } from 'date-fns';
-import { bn } from 'date-fns/locale';
+import { formatDateBn, nowBD } from '../../utils/dateUtils';
 import {
   FiDownload,
   FiUsers,
@@ -61,7 +60,7 @@ interface MonthOption {
 // ============================================
 
 const LunchStatement: React.FC = () => {
-  const currentDate = new Date();
+  const currentDate = nowBD();
   const [selectedYear, setSelectedYear] = useState<number>(
     currentDate.getFullYear()
   );
@@ -355,13 +354,8 @@ const LunchStatement: React.FC = () => {
         <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-3 text-sm">
           <span className="text-blue-800 dark:text-blue-200">
             সময়কাল:{' '}
-            {format(new Date(lunchSummary.period.startDate), 'dd MMM yyyy', {
-              locale: bn,
-            })}{' '}
-            -{' '}
-            {format(new Date(lunchSummary.period.endDate), 'dd MMM yyyy', {
-              locale: bn,
-            })}{' '}
+            {formatDateBn(lunchSummary.period.startDate)} -{' '}
+            {formatDateBn(lunchSummary.period.endDate)}{' '}
             | লাঞ্চ রেট: {formatCurrency(lunchSummary.period.lunchRate)}
           </span>
         </div>

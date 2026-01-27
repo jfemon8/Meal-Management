@@ -1,6 +1,6 @@
 import React, { useState, type ChangeEvent } from 'react';
-import { format, parseISO } from 'date-fns';
-import { bn } from 'date-fns/locale';
+import { parseISO } from 'date-fns';
+import { formatDateBn, formatDateTimeShort, formatDateISO } from '../../utils/dateUtils';
 import {
     FiAlertTriangle,
     FiCalendar,
@@ -150,8 +150,8 @@ const OverrideManagement: React.FC = () => {
         setEditForm({
             lunchRate: month.lunchRate,
             dinnerRate: month.dinnerRate || 0,
-            startDate: format(parseISO(month.startDate), 'yyyy-MM-dd'),
-            endDate: format(parseISO(month.endDate), 'yyyy-MM-dd')
+            startDate: formatDateISO(parseISO(month.startDate)),
+            endDate: formatDateISO(parseISO(month.endDate))
         });
         setReason('');
         setEditType('month');
@@ -241,7 +241,7 @@ const OverrideManagement: React.FC = () => {
 
     const formatDate = (dateStr: string): string => {
         try {
-            return format(parseISO(dateStr), 'd MMM yyyy', { locale: bn });
+            return formatDateBn(parseISO(dateStr));
         } catch {
             return dateStr;
         }
@@ -249,7 +249,7 @@ const OverrideManagement: React.FC = () => {
 
     const formatDateTime = (dateStr: string): string => {
         try {
-            return format(parseISO(dateStr), 'd MMM yyyy, h:mm a', { locale: bn });
+            return formatDateTimeShort(parseISO(dateStr));
         } catch {
             return dateStr;
         }

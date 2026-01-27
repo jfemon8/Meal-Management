@@ -1,7 +1,6 @@
 import React, { useState, useEffect, type ChangeEvent } from 'react';
 import { transactionService } from '../../services/mealService';
-import { format } from 'date-fns';
-import { bn } from 'date-fns/locale';
+import { formatDateTimeShort } from '../../utils/dateUtils';
 import { FiArrowUp, FiArrowDown, FiFilter } from 'react-icons/fi';
 
 // ============================================
@@ -208,7 +207,7 @@ const Transactions: React.FC = () => {
                     <p className="font-medium">{transaction.description}</p>
                     <p className="text-sm text-gray-500">
                       {getBalanceTypeLabel(transaction.balanceType)} •{' '}
-                      {format(new Date(transaction.createdAt), 'dd MMM yyyy, hh:mm a', { locale: bn })}
+                      {formatDateTimeShort(new Date(transaction.createdAt))}
                     </p>
                   </div>
                 </div>

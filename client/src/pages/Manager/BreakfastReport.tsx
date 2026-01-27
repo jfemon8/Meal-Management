@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { breakfastService, userService } from '../../services/mealService';
-import { format, startOfMonth, endOfMonth, subMonths, addMonths } from 'date-fns';
-import { bn } from 'date-fns/locale';
+import { startOfMonth, endOfMonth, subMonths, addMonths } from 'date-fns';
+import { formatMonthYear, formatDateISO, formatDateBn, formatDateTimeShort, nowBD, getDayNameBn, toBDTime } from '../../utils/dateUtils';
 import {
   FiChevronLeft,
   FiChevronRight,
@@ -42,7 +42,7 @@ interface Totals {
 // ============================================
 
 const BreakfastReport: React.FC = () => {
-  const [currentMonth, setCurrentMonth] = useState<Date>(new Date());
+  const [currentMonth, setCurrentMonth] = useState<Date>(nowBD());
   const [breakfasts, setBreakfasts] = useState<Breakfast[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
@@ -56,8 +56,8 @@ const BreakfastReport: React.FC = () => {
   const loadData = async (): Promise<void> => {
     setLoading(true);
     try {
-      const startDate = format(startOfMonth(currentMonth), 'yyyy-MM-dd');
-      const endDate = format(endOfMonth(currentMonth), 'yyyy-MM-dd');
+      const startDate = formatDateISO(startOfMonth(currentMonth));
+      const endDate = formatDateISO(endOfMonth(currentMonth));
 
       const [breakfastData, userData] = await Promise.all([
         breakfastService.getBreakfasts(startDate, endDate),
@@ -75,7 +75,7 @@ const BreakfastReport: React.FC = () => {
 
   const handlePrint = useReactToPrint({
     content: () => printRef.current,
-    documentTitle: `নাস্তা-রিপোর্ট-${format(currentMonth, 'yyyy-MM')}`,
+    documentTitle: `নাস্তা-রিপোর্ট-${formatDateISO(currentMonth).slice(0, 7)}`,
   });
 
   const prevMonth = (): void => setCurrentMonth(subMonths(currentMonth, 1));
@@ -197,7 +197,7 @@ const BreakfastReport: React.FC = () => {
               <FiChevronLeft className="w-6 h-6 dark:text-gray-300" />
             </button>
             <h2 className="text-xl font-semibold dark:text-gray-100">
-              {format(currentMonth, 'MMMM yyyy', { locale: bn })}
+              {formatMonthYear(currentMonth)}
             </h2>
             <button
               onClick={nextMonth}
@@ -239,7 +239,7 @@ const BreakfastReport: React.FC = () => {
         <div className="hidden print:block text-center mb-8">
           <h1 className="text-2xl font-bold">মিল ম্যানেজমেন্ট সিস্টেম</h1>
           <h2 className="text-xl mt-2">
-            নাস্তার খরচ রিপোর্ট - {format(currentMonth, 'MMMM yyyy', { locale: bn })}
+            নাস্তার খরচ রিপোর্ট - {formatMonthYear(currentMonth)}
           </h2>
         </div>
 
@@ -347,9 +347,9 @@ const BreakfastReport: React.FC = () => {
                           }`}
                         >
                           <td className="py-3 px-4 dark:text-gray-200">
-                            {format(new Date(b.date), 'dd MMM', { locale: bn })}
+                            {formatDateBn(b.date)}
                             <span className="text-xs text-gray-500 dark:text-gray-400 block">
-                              {format(new Date(b.date), 'EEEE', { locale: bn })}
+                              {getDayNameBn(toBDTime(b.date).getDay())}
                             </span>
                           </td>
                           <td className="py-3 px-4 dark:text-gray-300">
@@ -493,7 +493,7 @@ const BreakfastReport: React.FC = () => {
         {/* Print Footer */}
         <div className="hidden print:block text-center mt-8 pt-4 border-t text-sm text-gray-500">
           <p>
-            তৈরি: {format(new Date(), 'dd MMMM yyyy, hh:mm a', { locale: bn })}
+            তৈরি: {formatDateTimeShort(nowBD())}
           </p>
         </div>
       </div>

@@ -3,7 +3,7 @@ import { useAuth } from '../../context/AuthContext';
 import { mealService } from '../../services/mealService';
 import toast from 'react-hot-toast';
 import { format, subDays } from 'date-fns';
-import { bn } from 'date-fns/locale';
+import { formatDateBn, formatDateTimeShort, nowBD } from '../../utils/dateUtils';
 import {
   FiClock,
   FiUser,
@@ -83,9 +83,9 @@ const MealAuditLog: React.FC = () => {
 
   // Filters
   const [startDate, setStartDate] = useState<string>(
-    format(subDays(new Date(), 30), 'yyyy-MM-dd')
+    format(subDays(nowBD(), 30), 'yyyy-MM-dd')
   );
-  const [endDate, setEndDate] = useState<string>(format(new Date(), 'yyyy-MM-dd'));
+  const [endDate, setEndDate] = useState<string>(format(nowBD(), 'yyyy-MM-dd'));
   const [mealType, setMealType] = useState<string>('');
   const [showFilters, setShowFilters] = useState<boolean>(false);
 
@@ -306,7 +306,7 @@ const MealAuditLog: React.FC = () => {
                         <span className="text-gray-400">|</span>
                         <FiCalendar className="w-4 h-4 text-gray-400" />
                         <span className="dark:text-gray-300">
-                          {format(new Date(log.date), 'dd MMMM yyyy', { locale: bn })}
+                          {formatDateBn(new Date(log.date))}
                         </span>
                       </div>
 
@@ -363,7 +363,7 @@ const MealAuditLog: React.FC = () => {
                         {roleBadge.text}
                       </span>
                       <div className="text-xs text-gray-400 mt-1">
-                        {format(new Date(log.createdAt), 'dd/MM/yyyy hh:mm a', { locale: bn })}
+                        {formatDateTimeShort(new Date(log.createdAt))}
                       </div>
                     </div>
                   </div>

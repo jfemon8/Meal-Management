@@ -16,8 +16,12 @@ import {
   FiUserX,
   FiActivity,
 } from "react-icons/fi";
-import { format } from "date-fns";
-import { bn } from "date-fns/locale";
+import {
+  formatDateWithDay,
+  formatDateBn,
+  formatDateWithDayNoYear,
+  nowBD,
+} from "../../utils/dateUtils";
 import BDTIcon from "../../components/Icons/BDTIcon";
 import { Skeleton } from "../../components/ui/skeleton";
 import { Link } from "react-router-dom";
@@ -234,7 +238,7 @@ const Dashboard: React.FC = () => {
             স্বাগতম, {user?.name}!
           </h1>
           <p className="text-gray-500 dark:text-gray-400">
-            {format(new Date(), "EEEE, dd MMMM yyyy", { locale: bn })}
+            {formatDateWithDay(nowBD())}
           </p>
         </div>
       </div>
@@ -788,9 +792,7 @@ const Dashboard: React.FC = () => {
                 শুরুর তারিখ
               </p>
               <p className="font-medium text-gray-800 dark:text-gray-100">
-                {format(new Date(monthSettings.startDate), "dd MMMM yyyy", {
-                  locale: bn,
-                })}
+                {formatDateBn(monthSettings.startDate)}
               </p>
             </div>
             <div>
@@ -798,9 +800,7 @@ const Dashboard: React.FC = () => {
                 শেষের তারিখ
               </p>
               <p className="font-medium text-gray-800 dark:text-gray-100">
-                {format(new Date(monthSettings.endDate), "dd MMMM yyyy", {
-                  locale: bn,
-                })}
+                {formatDateBn(monthSettings.endDate)}
               </p>
             </div>
             <div>
@@ -852,9 +852,7 @@ const Dashboard: React.FC = () => {
                   />
                   <div>
                     <p className="font-medium text-gray-800 dark:text-gray-200">
-                      {format(new Date(day.date), "EEEE, dd MMMM", {
-                        locale: bn,
-                      })}
+                      {formatDateWithDayNoYear(day.date)}
                     </p>
                     <p className="text-sm text-gray-500 dark:text-gray-400">
                       {day.reason}

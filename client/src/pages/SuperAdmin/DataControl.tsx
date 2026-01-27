@@ -1,6 +1,6 @@
 import React, { useState, type ChangeEvent } from 'react';
-import { format, parseISO } from 'date-fns';
-import { bn } from 'date-fns/locale';
+import { parseISO } from 'date-fns';
+import { formatDateTimeShort, nowBD } from '../../utils/dateUtils';
 import {
     FiDatabase,
     FiTrash2,
@@ -130,8 +130,8 @@ interface ApiError {
 const DataControl: React.FC = () => {
     const [activeTab, setActiveTab] = useState<TabId>('summary');
     const [selectedUserId, setSelectedUserId] = useState<string>('');
-    const [recalcYear, setRecalcYear] = useState<number>(new Date().getFullYear());
-    const [recalcMonth, setRecalcMonth] = useState<number>(new Date().getMonth() + 1);
+    const [recalcYear, setRecalcYear] = useState<number>(nowBD().getFullYear());
+    const [recalcMonth, setRecalcMonth] = useState<number>(nowBD().getMonth() + 1);
     const [resetType, setResetType] = useState<string>('');
     const [resetReason, setResetReason] = useState<string>('');
     const [showResetConfirm, setShowResetConfirm] = useState<boolean>(false);
@@ -259,7 +259,7 @@ const DataControl: React.FC = () => {
 
     const formatDate = (dateStr: string): string => {
         try {
-            return format(parseISO(dateStr), 'd MMM yyyy, h:mm a', { locale: bn });
+            return formatDateTimeShort(parseISO(dateStr));
         } catch {
             return dateStr;
         }

@@ -15,7 +15,7 @@ import {
   subMonths,
   addDays,
 } from 'date-fns';
-import { bn } from 'date-fns/locale';
+import { formatMonthYear, formatDateBn, nowBD } from '../../utils/dateUtils';
 import { FiChevronLeft, FiChevronRight, FiCheck, FiX, FiLock, FiCalendar, FiClock } from 'react-icons/fi';
 
 // ============================================
@@ -353,7 +353,7 @@ const MealCalendar: React.FC = () => {
           <button onClick={prevMonth} className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg">
             <FiChevronLeft className="w-6 h-6" />
           </button>
-          <h2 className="text-xl font-semibold">{format(currentMonth, 'MMMM yyyy', { locale: bn })}</h2>
+          <h2 className="text-xl font-semibold">{formatMonthYear(currentMonth)}</h2>
           <button onClick={nextMonth} className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg">
             <FiChevronRight className="w-6 h-6" />
           </button>
@@ -512,7 +512,7 @@ const MealCalendar: React.FC = () => {
             {holidays.map((holiday) => (
               <li key={holiday._id} className="flex items-center gap-3 text-sm">
                 <span className="text-gray-500 dark:text-gray-400">
-                  {format(new Date(holiday.date), 'dd MMMM', { locale: bn })}
+                  {formatDateBn(new Date(holiday.date)).split(' ').slice(0, 2).join(' ')}
                 </span>
                 <span className="text-gray-700 dark:text-gray-400">-</span>
                 <span className="font-medium dark:text-gray-200">{holiday.nameBn}</span>

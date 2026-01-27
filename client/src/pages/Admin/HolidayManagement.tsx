@@ -1,8 +1,7 @@
 import React, { useState, useEffect, type FormEvent, type ChangeEvent } from 'react';
 import { holidayService } from '../../services/mealService';
 import toast from 'react-hot-toast';
-import { format } from 'date-fns';
-import { bn } from 'date-fns/locale';
+import { formatDateISO, formatDateBn, toBengaliNumber, nowBD, BENGALI_MONTHS } from '../../utils/dateUtils';
 import {
   FiPlus,
   FiEdit2,
@@ -42,7 +41,7 @@ const HolidayManagement: React.FC = () => {
     isRecurring: false,
   });
   const [submitting, setSubmitting] = useState<boolean>(false);
-  const [year, setYear] = useState<number>(new Date().getFullYear());
+  const [year, setYear] = useState<number>(nowBD().getFullYear());
 
   useEffect(() => {
     loadHolidays();
@@ -101,7 +100,7 @@ const HolidayManagement: React.FC = () => {
 
   const handleEdit = (holiday: Holiday): void => {
     setFormData({
-      date: format(new Date(holiday.date), 'yyyy-MM-dd'),
+      date: formatDateISO(new Date(holiday.date)),
       name: holiday.name,
       nameBn: holiday.nameBn,
       type: holiday.type,
@@ -337,10 +336,10 @@ const HolidayManagement: React.FC = () => {
                 <div className="flex items-center gap-4">
                   <div className="text-center bg-white dark:bg-gray-700 p-2 rounded-lg shadow-sm min-w-[60px]">
                     <p className="text-2xl font-bold text-primary-600 dark:text-primary-400">
-                      {format(new Date(holiday.date), 'd')}
+                      {toBengaliNumber(new Date(holiday.date).getDate())}
                     </p>
                     <p className="text-xs text-gray-500 dark:text-gray-400">
-                      {format(new Date(holiday.date), 'MMM', { locale: bn })}
+                      {BENGALI_MONTHS[new Date(holiday.date).getMonth()].slice(0, 4)}
                     </p>
                   </div>
                   <div>

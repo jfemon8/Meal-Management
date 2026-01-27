@@ -12,10 +12,15 @@ import {
   endOfMonth,
   eachDayOfInterval,
   isSameDay,
-  isFriday,
-  isSaturday,
 } from 'date-fns';
-import { bn } from 'date-fns/locale';
+import {
+  formatDateISO,
+  formatMonthYear,
+  formatDateBn,
+  nowBD,
+  isFriday,
+  isOddSaturday as isOddSaturdayUtil,
+} from '../../utils/dateUtils';
 import {
   FiChevronLeft,
   FiChevronRight,
@@ -40,7 +45,7 @@ type BulkAction = 'on' | 'off';
 const UserMealCalendar: React.FC = () => {
   const [users, setUsers] = useState<User[]>([]);
   const [selectedUserId, setSelectedUserId] = useState<string>('');
-  const [currentMonth, setCurrentMonth] = useState<Date>(new Date());
+  const [currentMonth, setCurrentMonth] = useState<Date>(nowBD());
   const [mealType, setMealType] = useState<MealType>('lunch');
   const [mealStatus, setMealStatus] = useState<MealStatus[]>([]);
   const [holidays, setHolidays] = useState<Holiday[]>([]);
@@ -75,8 +80,8 @@ const UserMealCalendar: React.FC = () => {
   useEffect(() => {
     const monthStart = startOfMonth(currentMonth);
     const monthEnd = endOfMonth(currentMonth);
-    setBulkStartDate(format(monthStart, 'yyyy-MM-dd'));
-    setBulkEndDate(format(monthEnd, 'yyyy-MM-dd'));
+    setBulkStartDate(formatDateISO(monthStart));
+    setBulkEndDate(formatDateISO(monthEnd));
   }, [currentMonth]);
 
   const loadUsers = async (): Promise<void> => {
@@ -104,8 +109,8 @@ const UserMealCalendar: React.FC = () => {
     try {
       const year = currentMonth.getFullYear();
       const month = currentMonth.getMonth() + 1;
-      const startDate = format(startOfMonth(currentMonth), 'yyyy-MM-dd');
-      const endDate = format(endOfMonth(currentMonth), 'yyyy-MM-dd');
+      const startDate = formatDateISO(startOfMonth(currentMonth));
+      const endDate = formatDateISO(endOfMonth(currentMonth));
 
       const [statusRes, holidaysRes, settingsRes] = await Promise.all([
         mealService.getMealStatus(startDate, endDate, selectedUserId, mealType),
@@ -230,7 +235,7 @@ const UserMealCalendar: React.FC = () => {
   });
 
   const getStatusForDate = (date: Date): MealStatus | undefined => {
-    const dateStr = format(date, 'yyyy-MM-dd');
+    const dateStr = formatDateISO(date);
     return mealStatus.find((s) => s.date === dateStr);
   };
 
@@ -244,15 +249,12 @@ const UserMealCalendar: React.FC = () => {
   };
 
   const isOddSaturday = (date: Date): boolean => {
-    if (!isSaturday(date)) return false;
-    const dayOfMonth = date.getDate();
-    const saturdayNumber = Math.ceil(dayOfMonth / 7);
-    return saturdayNumber % 2 === 1;
+    return isOddSaturdayUtil(date);
   };
 
   // Check if current month is editable (managers can only edit current month)
   const isCurrentMonthEditable = (): boolean => {
-    const today = new Date();
+    const today = nowBD();
     const thisMonth = today.getMonth();
     const thisYear = today.getFullYear();
     return (
@@ -464,7 +466,7 @@ const UserMealCalendar: React.FC = () => {
             </button>
             <div className="text-center">
               <h2 className="text-xl font-semibold dark:text-gray-100">
-                {format(currentMonth, 'MMMM yyyy', { locale: bn })}
+                {formatMonthYear(currentMonth)}
               </h2>
               {!isCurrentMonthEditable() && (
                 <p className="text-sm text-yellow-600 dark:text-yellow-400 mt-1">
@@ -542,9 +544,9 @@ const UserMealCalendar: React.FC = () => {
               const oddSat = isOddSaturday(day);
               const friday = isFriday(day);
               const isAutoOff = holiday || friday || oddSat;
-              const isUpdatingThis = updating === format(day, 'yyyy-MM-dd');
+              const isUpdatingThis = updating === formatDateISO(day);
               const canToggle = isCurrentMonthEditable();
-              const today = new Date();
+              const today = nowBD();
               const isToday = isSameDay(day, today);
               const isManuallySet = status?.isManuallySet;
 
@@ -563,7 +565,7 @@ const UserMealCalendar: React.FC = () => {
                   key={day.toISOString()}
                   onClick={() =>
                     canToggle &&
-                    handleToggleMeal(format(day, 'yyyy-MM-dd'), isOn)
+                    handleToggleMeal(formatDateISO(day), isOn)
                   }
                   disabled={!canToggle || isUpdatingThis}
                   className={`aspect-square p-1 rounded-lg border-2 transition-all relative ${getCellStyle()} ${
@@ -654,7 +656,7 @@ const UserMealCalendar: React.FC = () => {
             {holidays.map((holiday) => (
               <li key={holiday._id} className="flex items-center gap-3 text-sm">
                 <span className="text-gray-500 dark:text-gray-400">
-                  {format(new Date(holiday.date), 'dd MMMM', { locale: bn })}
+                  {formatDateBn(holiday.date)}
                 </span>
                 <span className="text-gray-700 dark:text-gray-400">-</span>
                 <span className="font-medium dark:text-gray-200">

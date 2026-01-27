@@ -12,8 +12,7 @@ import {
   FiChevronDown,
   FiChevronUp,
 } from 'react-icons/fi';
-import { format } from 'date-fns';
-import { bn } from 'date-fns/locale';
+import { formatDateTimeShort } from '../../utils/dateUtils';
 
 // ============================================
 // Types
@@ -216,7 +215,7 @@ const ManagerActivity: React.FC = () => {
   };
 
   const formatDate = (date: string): string => {
-    return format(new Date(date), 'dd MMM yyyy, hh:mm a', { locale: bn });
+    return formatDateTimeShort(new Date(date));
   };
 
   if (loading && !summary) {
@@ -498,9 +497,7 @@ const ManagerActivity: React.FC = () => {
                         <div className="text-right hidden sm:block">
                           <p className="text-sm text-gray-600 dark:text-gray-400">
                             <FiClock className="inline w-4 h-4 mr-1" />
-                            {format(new Date(manager.lastActivity), 'dd MMM, hh:mm a', {
-                              locale: bn,
-                            })}
+                            {formatDateTimeShort(new Date(manager.lastActivity))}
                           </p>
                           <p className="text-xs text-gray-400 dark:text-gray-500">
                             শেষ অ্যাক্টিভিটি

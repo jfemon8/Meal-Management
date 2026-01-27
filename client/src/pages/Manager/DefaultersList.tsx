@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, type ChangeEvent } from 'react';
 import { reportService } from '../../services/mealService';
-import { format, subMonths, addMonths } from 'date-fns';
-import { bn } from 'date-fns/locale';
+import { subMonths, addMonths } from 'date-fns';
+import { formatMonthYear, formatDateISO, formatDateTimeShort, nowBD } from '../../utils/dateUtils';
 import {
   FiChevronLeft,
   FiChevronRight,
@@ -103,7 +103,7 @@ const transformDefaultersResponse = (
 // ============================================
 
 const DefaultersList: React.FC = () => {
-  const [currentMonth, setCurrentMonth] = useState<Date>(new Date());
+  const [currentMonth, setCurrentMonth] = useState<Date>(nowBD());
   const [report, setReport] = useState<DefaultersReport | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [threshold, setThreshold] = useState<number>(0);
@@ -141,7 +141,7 @@ const DefaultersList: React.FC = () => {
 
   const handlePrint = useReactToPrint({
     content: () => printRef.current,
-    documentTitle: `বকেয়া-তালিকা-${format(currentMonth, 'yyyy-MM')}`,
+    documentTitle: `বকেয়া-তালিকা-${formatDateISO(currentMonth).slice(0, 7)}`,
   });
 
   const handleExportCSV = async (): Promise<void> => {
@@ -239,7 +239,7 @@ const DefaultersList: React.FC = () => {
               <FiChevronLeft className="w-6 h-6 dark:text-gray-300" />
             </button>
             <h2 className="text-xl font-semibold dark:text-gray-100">
-              {format(currentMonth, 'MMMM yyyy', { locale: bn })}
+              {formatMonthYear(currentMonth)}
             </h2>
             <button
               onClick={nextMonth}
@@ -295,7 +295,7 @@ const DefaultersList: React.FC = () => {
           <div className="hidden print:block text-center mb-8">
             <h1 className="text-2xl font-bold">মিল ম্যানেজমেন্ট সিস্টেম</h1>
             <h2 className="text-xl mt-2">
-              বকেয়া তালিকা - {format(currentMonth, 'MMMM yyyy', { locale: bn })}
+              বকেয়া তালিকা - {formatMonthYear(currentMonth)}
             </h2>
             <p className="text-sm text-gray-600 mt-1">
               ফিল্টার: {getBalanceTypeBn(balanceType)} | থ্রেশহোল্ড: ৳{threshold}
@@ -477,7 +477,7 @@ const DefaultersList: React.FC = () => {
           {/* Print Footer */}
           <div className="hidden print:block text-center mt-8 pt-4 border-t text-sm text-gray-500">
             <p>
-              তৈরি: {format(new Date(), 'dd MMMM yyyy, hh:mm a', { locale: bn })}
+              তৈরি: {formatDateTimeShort(nowBD())}
             </p>
           </div>
         </div>

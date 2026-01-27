@@ -1,8 +1,7 @@
 import React, { useState, useEffect, FormEvent, ChangeEvent } from 'react';
 import { userService, transactionService } from '../../services/mealService';
 import toast from 'react-hot-toast';
-import { format } from 'date-fns';
-import { bn } from 'date-fns/locale';
+import { formatDateTimeShort } from '../../utils/dateUtils';
 import {
   FiSearch,
   FiUser,
@@ -564,11 +563,7 @@ const UserBalance: React.FC = () => {
                             {txn.description}
                           </p>
                           <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
-                            {format(
-                              new Date(txn.createdAt),
-                              'dd MMM yyyy, hh:mm a',
-                              { locale: bn }
-                            )}
+                            {formatDateTimeShort(txn.createdAt)}
                             {typeof txn.performedBy === 'object' &&
                               txn.performedBy?.name && (
                                 <span className="ml-2">

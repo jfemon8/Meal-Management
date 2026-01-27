@@ -8,6 +8,12 @@ const MonthSettings = require('../models/MonthSettings');
 const Holiday = require('../models/Holiday');
 const { protect, isManager, isAdmin } = require('../middleware/auth');
 const {
+    formatDateISO,
+    formatDateBn,
+    formatDateTime,
+    nowBD,
+    toBDTime,
+    startOfDayBD,
     getDatesBetween,
     formatDate,
     isDefaultMealOff,
@@ -1300,8 +1306,7 @@ router.get('/user/:userId/monthly', protect, async (req, res) => {
 // @access  Private (Manager+)
 router.get('/manager-dashboard', protect, isManager, async (req, res) => {
     try {
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
+        const today = startOfDayBD();
         const todayEnd = new Date(today);
         todayEnd.setHours(23, 59, 59, 999);
 
@@ -1744,8 +1749,7 @@ th { background-color: #f0f0f0; font-weight: bold; }
 // @access  Private (Admin+)
 router.get('/admin-dashboard', protect, isAdmin, async (req, res) => {
     try {
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
+        const today = startOfDayBD();
 
         // Get user role counts
         const roleCounts = await User.aggregate([

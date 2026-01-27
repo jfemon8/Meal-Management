@@ -3,7 +3,7 @@ const router = express.Router();
 const { body, validationResult } = require('express-validator');
 const MonthSettings = require('../models/MonthSettings');
 const { protect, isManager } = require('../middleware/auth');
-const { getDefaultMonthRange, isValidDateRange } = require('../utils/dateUtils');
+const { formatDateISO, formatDateBn, formatDateTime, nowBD, toBDTime, startOfDayBD, getDefaultMonthRange, isValidDateRange } = require('../utils/dateUtils');
 
 // @route   GET /api/month-settings
 // @desc    Get month settings
@@ -461,7 +461,7 @@ router.get('/:id/preview', protect, isManager, async (req, res) => {
 // @access  Private
 router.get('/current', protect, async (req, res) => {
     try {
-        const today = new Date();
+        const today = nowBD();
         const year = today.getFullYear();
         const month = today.getMonth() + 1;
 

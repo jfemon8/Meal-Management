@@ -4,6 +4,7 @@ const mongoose = require('mongoose');
 const path = require('path');
 const fs = require('fs');
 const { protect, isSuperAdmin } = require('../middleware/auth');
+const { formatDateISO, formatDateTime, nowBD, toBDTime } = require('../utils/dateUtils');
 
 // Backup directory
 const BACKUP_DIR = path.join(__dirname, '../backups');
@@ -94,7 +95,7 @@ router.post('/', protect, isSuperAdmin, async (req, res) => {
         }
 
         // Generate filename with timestamp
-        const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+        const timestamp = formatDateISO(nowBD()).replace(/-/g, '') + '_' + toBDTime(new Date()).toTimeString().slice(0, 8).replace(/:/g, '');
         const filename = `backup_${timestamp}.json`;
         const filePath = path.join(BACKUP_DIR, filename);
 
@@ -214,7 +215,7 @@ router.post('/restore/:filename', protect, isSuperAdmin, async (req, res) => {
             preRestoreBackup.data[name] = await Model.find({}).lean();
         }
 
-        const preRestoreFilename = `pre_restore_${new Date().toISOString().replace(/[:.]/g, '-')}.json`;
+        const preRestoreFilename = `pre_restore_${formatDateISO(nowBD()).replace(/-/g, '')}_${toBDTime(new Date()).toTimeString().slice(0, 8).replace(/:/g, '')}.json`;
         fs.writeFileSync(path.join(BACKUP_DIR, preRestoreFilename), JSON.stringify(preRestoreBackup, null, 2));
 
         // Restore each collection

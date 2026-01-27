@@ -1,8 +1,8 @@
 import React, { useState, useEffect, type FormEvent, type ReactNode } from 'react';
 import { monthSettingsService } from '../../services/mealService';
 import toast from 'react-hot-toast';
-import { format, startOfMonth, endOfMonth, addMonths, subMonths } from 'date-fns';
-import { bn } from 'date-fns/locale';
+import { startOfMonth, endOfMonth, addMonths, subMonths } from 'date-fns';
+import { formatDateISO, formatMonthYear, formatDateBn, nowBD } from '../../utils/dateUtils';
 import {
   FiCalendar,
   FiSave,
@@ -97,7 +97,7 @@ interface ExtendedMonthSettings extends MonthSettingsType {
 // ============================================
 
 const MonthSettings: React.FC = () => {
-  const [currentMonth, setCurrentMonth] = useState<Date>(new Date());
+  const [currentMonth, setCurrentMonth] = useState<Date>(nowBD());
   const [settings, setSettings] = useState<ExtendedMonthSettings | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [formData, setFormData] = useState<FormData>({
@@ -141,8 +141,8 @@ const MonthSettings: React.FC = () => {
       // Set form data
       if (settingsData && !settingsData.isDefault) {
         setFormData({
-          startDate: format(new Date(settingsData.startDate), 'yyyy-MM-dd'),
-          endDate: format(new Date(settingsData.endDate), 'yyyy-MM-dd'),
+          startDate: formatDateISO(settingsData.startDate),
+          endDate: formatDateISO(settingsData.endDate),
           lunchRate: settingsData.lunchRate?.toString() || '',
           dinnerRate: settingsData.dinnerRate?.toString() || '',
           notes: settingsData.notes || '',
@@ -152,8 +152,8 @@ const MonthSettings: React.FC = () => {
         const defaultStart = startOfMonth(currentMonth);
         const defaultEnd = endOfMonth(currentMonth);
         setFormData({
-          startDate: format(defaultStart, 'yyyy-MM-dd'),
-          endDate: format(defaultEnd, 'yyyy-MM-dd'),
+          startDate: formatDateISO(defaultStart),
+          endDate: formatDateISO(defaultEnd),
           lunchRate: '',
           dinnerRate: '',
           notes: '',
@@ -285,7 +285,7 @@ const MonthSettings: React.FC = () => {
             <FiChevronLeft className="w-6 h-6 dark:text-gray-300" />
           </button>
           <h2 className="text-xl font-semibold dark:text-gray-100">
-            {format(currentMonth, 'MMMM yyyy', { locale: bn })}
+            {formatMonthYear(currentMonth)}
           </h2>
           <button
             onClick={nextMonth}
@@ -473,15 +473,8 @@ const MonthSettings: React.FC = () => {
                 </h3>
                 {previewData && (
                   <p className="text-sm text-gray-500 dark:text-gray-400">
-                    {format(new Date(previewData.settings.startDate), 'dd MMM', {
-                      locale: bn,
-                    })}{' '}
-                    -{' '}
-                    {format(
-                      new Date(previewData.settings.endDate),
-                      'dd MMM yyyy',
-                      { locale: bn }
-                    )}{' '}
+                    {formatDateBn(previewData.settings.startDate)} -{' '}
+                    {formatDateBn(previewData.settings.endDate)}{' '}
                     ({previewData.settings.totalDays} দিন)
                   </p>
                 )}

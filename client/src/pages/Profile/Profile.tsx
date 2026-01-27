@@ -2,8 +2,7 @@ import React, { useState, useEffect, type FormEvent, type ChangeEvent } from 're
 import { useAuth } from '../../context/AuthContext';
 import api from '../../services/api';
 import toast from 'react-hot-toast';
-import { format } from 'date-fns';
-import { bn } from 'date-fns/locale';
+import { formatDateTimeShort } from '../../utils/dateUtils';
 import {
   FiUser,
   FiMail,
@@ -496,7 +495,7 @@ const Profile: React.FC = () => {
                     {getLoginMethodLabel(login.loginMethod)}
                   </p>
                   <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
-                    {format(new Date(login.loginAt), 'dd MMM yyyy, hh:mm a', { locale: bn })}
+                    {formatDateTimeShort(new Date(login.loginAt))}
                   </p>
                 </div>
               </div>

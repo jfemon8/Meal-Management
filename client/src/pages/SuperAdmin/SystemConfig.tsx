@@ -1,6 +1,6 @@
 import React, { useState, type ChangeEvent, type MouseEvent } from 'react';
-import { format, parseISO } from 'date-fns';
-import { bn } from 'date-fns/locale';
+import { parseISO } from 'date-fns';
+import { formatDateTimeShort, formatDateISO, nowBD } from '../../utils/dateUtils';
 import {
     FiSettings,
     FiTool,
@@ -165,7 +165,7 @@ const SystemConfig: React.FC = () => {
 
     // Test form
     const [testForm, setTestForm] = useState<TestForm>({
-        date: format(new Date(), 'yyyy-MM-dd'),
+        date: formatDateISO(nowBD()),
         mealType: 'lunch',
         userCount: 10
     });
@@ -322,7 +322,7 @@ const SystemConfig: React.FC = () => {
 
     const formatDateTime = (dateStr: string): string => {
         try {
-            return format(parseISO(dateStr), 'd MMM yyyy, h:mm a', { locale: bn });
+            return formatDateTimeShort(parseISO(dateStr));
         } catch {
             return dateStr;
         }

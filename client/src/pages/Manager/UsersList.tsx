@@ -1,7 +1,6 @@
 import React, { useState, useEffect, type ChangeEvent } from 'react';
 import { userService, transactionService } from '../../services/mealService';
-import { format } from 'date-fns';
-import { bn } from 'date-fns/locale';
+import { formatDateBn, formatDateTimeShort } from '../../utils/dateUtils';
 import {
   FiSearch,
   FiUser,
@@ -394,9 +393,7 @@ const UsersList: React.FC = () => {
                   </div>
                   <p className="font-medium dark:text-gray-200">
                     {selectedUser.createdAt
-                      ? format(new Date(selectedUser.createdAt), 'dd MMM yyyy', {
-                          locale: bn,
-                        })
+                      ? formatDateBn(selectedUser.createdAt)
                       : 'N/A'}
                   </p>
                 </div>
@@ -486,11 +483,7 @@ const UsersList: React.FC = () => {
                             {getBalanceTypeLabel(txn.balanceType)}
                           </p>
                           <p className="text-xs text-gray-500 dark:text-gray-400">
-                            {format(
-                              new Date(txn.createdAt),
-                              'dd MMM yyyy, hh:mm a',
-                              { locale: bn }
-                            )}
+                            {formatDateTimeShort(txn.createdAt)}
                           </p>
                         </div>
                         <p

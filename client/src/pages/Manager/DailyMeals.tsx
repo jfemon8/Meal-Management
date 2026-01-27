@@ -1,8 +1,8 @@
 import React, { useState, useEffect, type ChangeEvent } from 'react';
 import { mealService } from '../../services/mealService';
 import toast from 'react-hot-toast';
-import { format, addDays, subDays } from 'date-fns';
-import { bn } from 'date-fns/locale';
+import { addDays, subDays } from 'date-fns';
+import { formatDateISO, formatDateWithDay, nowBD } from '../../utils/dateUtils';
 import {
   FiChevronLeft,
   FiChevronRight,
@@ -77,7 +77,7 @@ const transformToDailyData = (response: ServiceDailyMeals): DailyData => {
 // ============================================
 
 const DailyMeals: React.FC = () => {
-  const [currentDate, setCurrentDate] = useState<Date>(new Date());
+  const [currentDate, setCurrentDate] = useState<Date>(nowBD());
   const [dailyData, setDailyData] = useState<DailyData | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [updating, setUpdating] = useState<string | null>(null);
@@ -89,7 +89,7 @@ const DailyMeals: React.FC = () => {
   const loadDailyMeals = async (): Promise<void> => {
     setLoading(true);
     try {
-      const dateStr = format(currentDate, 'yyyy-MM-dd');
+      const dateStr = formatDateISO(currentDate);
       const response = await mealService.getDailyMeals(dateStr);
       // Transform the service response to component's expected format
       const transformedData = transformToDailyData(response as unknown as ServiceDailyMeals);
@@ -107,7 +107,7 @@ const DailyMeals: React.FC = () => {
   ): Promise<void> => {
     setUpdating(userId);
     try {
-      const dateStr = format(currentDate, 'yyyy-MM-dd');
+      const dateStr = formatDateISO(currentDate);
       await mealService.toggleMeal(dateStr, !currentStatus, userId);
       toast.success(currentStatus ? 'মিল অফ হয়েছে' : 'মিল অন হয়েছে');
       loadDailyMeals();
@@ -124,7 +124,7 @@ const DailyMeals: React.FC = () => {
     count: string
   ): Promise<void> => {
     try {
-      const dateStr = format(currentDate, 'yyyy-MM-dd');
+      const dateStr = formatDateISO(currentDate);
       await mealService.updateMealCount(dateStr, userId, parseInt(count));
       toast.success('মিল সংখ্যা আপডেট হয়েছে');
       loadDailyMeals();
@@ -136,7 +136,7 @@ const DailyMeals: React.FC = () => {
 
   const prevDay = (): void => setCurrentDate(subDays(currentDate, 1));
   const nextDay = (): void => setCurrentDate(addDays(currentDate, 1));
-  const goToToday = (): void => setCurrentDate(new Date());
+  const goToToday = (): void => setCurrentDate(nowBD());
 
   if (loading) {
     return (
@@ -161,7 +161,7 @@ const DailyMeals: React.FC = () => {
           </button>
           <div className="text-center">
             <h2 className="text-xl font-semibold">
-              {format(currentDate, 'EEEE, dd MMMM yyyy', { locale: bn })}
+              {formatDateWithDay(currentDate)}
             </h2>
             <button
               onClick={goToToday}

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { FiDownload, FiClock, FiTrendingUp, FiTrendingDown, FiDollarSign } from 'react-icons/fi';
 import { format, subDays } from 'date-fns';
-import { bn } from 'date-fns/locale';
+import { nowBD, toBengaliNumber, toBDTime, BENGALI_MONTHS } from '../../utils/dateUtils';
 import api from '../../services/api';
 import toast from 'react-hot-toast';
 import LowBalanceWarning from '../../components/Wallet/LowBalanceWarning';
@@ -46,7 +46,7 @@ const Wallet: React.FC = () => {
     useEffect(() => {
         const fetchBalanceTrend = async () => {
             try {
-                const endDate = new Date();
+                const endDate = nowBD();
                 const startDate = subDays(endDate, 30);
 
                 const response = await api.get('/transactions', {
@@ -63,7 +63,7 @@ const Wallet: React.FC = () => {
                 const dateMap = new Map<string, ChartDataPoint>();
 
                 // Initialize with current balances
-                const today = format(new Date(), 'yyyy-MM-dd');
+                const today = format(nowBD(), 'yyyy-MM-dd');
                 dateMap.set(today, {
                     date: today,
                     breakfast: user?.balances?.breakfast?.amount || 0,
@@ -90,12 +90,20 @@ const Wallet: React.FC = () => {
                     point[tx.balanceType] = tx.newBalance;
                 });
 
+                // Helper to format date as "dd month" in Bengali for chart
+                const formatChartDateBn = (dateStr: string): string => {
+                    const d = toBDTime(dateStr);
+                    const day = toBengaliNumber(d.getDate());
+                    const month = BENGALI_MONTHS[d.getMonth()].slice(0, 4);
+                    return `${day} ${month}`;
+                };
+
                 // Convert to array and sort by date
                 const chartArr = Array.from(dateMap.values())
                     .sort((a, b) => a.date.localeCompare(b.date))
                     .map((point) => ({
                         ...point,
-                        date: format(new Date(point.date), 'dd MMM', { locale: bn })
+                        date: formatChartDateBn(point.date)
                     }));
 
                 setChartData(chartArr);
