@@ -32,7 +32,8 @@
       "Bash(powershell \"Get-Process node -ErrorAction SilentlyContinue | Stop-Process -Force\")",
       "Bash(dir /s \"d:\\\\Projects\\\\MealManagement\")",
       "Bash(dir:*)",
-      "Bash(xargs ls:*)"
+      "Bash(xargs ls:*)",
+      "Bash(git rm:*)"
     ]
   }
 }
