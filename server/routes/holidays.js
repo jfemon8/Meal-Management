@@ -41,7 +41,11 @@ router.get('/upcoming', protect, async (req, res) => {
 
         while (currentDate <= endDate) {
             const dayOfWeek = currentDate.getDay();
-            const dateStr = currentDate.toISOString().split('T')[0];
+            // Use local date formatting to avoid UTC timezone shift
+            const year = currentDate.getFullYear();
+            const month = String(currentDate.getMonth() + 1).padStart(2, '0');
+            const day = String(currentDate.getDate()).padStart(2, '0');
+            const dateStr = `${year}-${month}-${day}`;
 
             // Check if it's Friday (5)
             if (dayOfWeek === 5) {
@@ -78,7 +82,12 @@ router.get('/upcoming', protect, async (req, res) => {
 
         // Add holidays to the list
         holidays.forEach(holiday => {
-            const dateStr = holiday.date.toISOString().split('T')[0];
+            // Use local date formatting for holidays too
+            const hDate = new Date(holiday.date);
+            const hYear = hDate.getFullYear();
+            const hMonth = String(hDate.getMonth() + 1).padStart(2, '0');
+            const hDay = String(hDate.getDate()).padStart(2, '0');
+            const dateStr = `${hYear}-${hMonth}-${hDay}`;
             // Check if this date is not already in offDays
             const existingIdx = offDays.findIndex(d => d.date === dateStr);
             if (existingIdx === -1) {
