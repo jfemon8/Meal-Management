@@ -74,7 +74,7 @@ const BreakfastReport: React.FC = () => {
   };
 
   const handlePrint = useReactToPrint({
-    contentRef: printRef,
+    content: () => printRef.current,
     documentTitle: `নাস্তা-রিপোর্ট-${format(currentMonth, 'yyyy-MM')}`,
   });
 

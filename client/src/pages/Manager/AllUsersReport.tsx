@@ -99,7 +99,7 @@ const AllUsersReport: React.FC = () => {
   };
 
   const handlePrint = useReactToPrint({
-    contentRef: printRef,
+    content: () => printRef.current,
     documentTitle: `সব-ইউজার-রিপোর্ট-${format(currentMonth, 'yyyy-MM')}`,
   });
 

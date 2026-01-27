@@ -73,7 +73,7 @@ const DailyMealReport: React.FC = () => {
   };
 
   const handlePrint = useReactToPrint({
-    contentRef: printRef,
+    content: () => printRef.current,
     documentTitle: `দৈনিক-মিল-রিপোর্ট-${format(selectedDate, 'yyyy-MM-dd')}`,
   });
 
