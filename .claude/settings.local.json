@@ -33,7 +33,9 @@
       "Bash(dir /s \"d:\\\\Projects\\\\MealManagement\")",
       "Bash(dir:*)",
       "Bash(xargs ls:*)",
-      "Bash(git rm:*)"
+      "Bash(git rm:*)",
+      "Bash(npm ls:*)",
+      "Bash(npm run build:*)"
     ]
   }
 }

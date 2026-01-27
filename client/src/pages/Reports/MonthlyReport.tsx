@@ -99,7 +99,7 @@ const MonthlyReport: React.FC = () => {
   };
 
   const handlePrint = useReactToPrint({
-    content: () => printRef.current,
+    contentRef: printRef,
     documentTitle: `মিল-রিপোর্ট-${format(currentMonth, 'yyyy-MM')}`,
   });
 

@@ -140,7 +140,7 @@ const DefaultersList: React.FC = () => {
   };
 
   const handlePrint = useReactToPrint({
-    content: () => printRef.current,
+    contentRef: printRef,
     documentTitle: `বকেয়া-তালিকা-${format(currentMonth, 'yyyy-MM')}`,
   });
 
