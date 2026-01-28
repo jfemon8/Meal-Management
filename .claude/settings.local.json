@@ -36,7 +36,11 @@
       "Bash(git rm:*)",
       "Bash(npm ls:*)",
       "Bash(npm run build:*)",
-      "Bash(if exist node_modules.cache rmdir /s /q node_modules.cache)"
+      "Bash(if exist node_modules.cache rmdir /s /q node_modules.cache)",
+      "Bash(Get-ChildItem -Path \"d:\\\\Projects\\\\MealManagement\\\\server\" -Recurse -Include \"*.js\")",
+      "Bash(Select-Object -Property FullName)",
+      "Bash(find:*)",
+      "Bash(npm run typecheck:*)"
     ]
   }
 }
