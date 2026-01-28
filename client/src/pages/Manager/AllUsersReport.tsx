@@ -1,16 +1,22 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { reportService } from '../../services/mealService';
-import { subMonths, addMonths } from 'date-fns';
-import { formatMonthYear, formatDateISO, formatDateBn, formatDateTimeShort, nowBD } from '../../utils/dateUtils';
+import React, { useState, useEffect, useRef } from "react";
+import { reportService } from "../../services/mealService";
+import { subMonths, addMonths } from "date-fns";
+import {
+  formatMonthYear,
+  formatDateISO,
+  formatDateBn,
+  formatDateTimeShort,
+  nowBD,
+} from "../../utils/dateUtils";
 import {
   FiPrinter,
   FiChevronLeft,
   FiChevronRight,
   FiDownload,
   FiFile,
-} from 'react-icons/fi';
-import { useReactToPrint } from 'react-to-print';
-import toast from 'react-hot-toast';
+} from "react-icons/fi";
+import { useReactToPrint } from "react-to-print";
+import toast from "react-hot-toast";
 
 // ============================================
 // Types
@@ -26,7 +32,7 @@ interface UserReportMealData {
 }
 
 interface DueAdvance {
-  type: 'due' | 'advance' | 'settled';
+  type: "due" | "advance" | "settled";
   amount: number;
 }
 
@@ -92,7 +98,7 @@ const AllUsersReport: React.FC = () => {
       // Transform the response to expected format
       setReport(response as unknown as AllUsersReportData);
     } catch (error) {
-      console.error('Error loading report:', error);
+      console.error("Error loading report:", error);
     } finally {
       setLoading(false);
     }
@@ -108,10 +114,10 @@ const AllUsersReport: React.FC = () => {
     try {
       const year = currentMonth.getFullYear();
       const month = currentMonth.getMonth() + 1;
-      await reportService.exportCSV(year, month, 'all-users');
-      toast.success('CSV ডাউনলোড হয়েছে');
+      await reportService.exportCSV(year, month, "all-users");
+      toast.success("CSV ডাউনলোড হয়েছে");
     } catch (error) {
-      toast.error('এক্সপোর্ট করতে সমস্যা হয়েছে');
+      toast.error("এক্সপোর্ট করতে সমস্যা হয়েছে");
     } finally {
       setExporting(false);
     }
@@ -122,10 +128,10 @@ const AllUsersReport: React.FC = () => {
     try {
       const year = currentMonth.getFullYear();
       const month = currentMonth.getMonth() + 1;
-      await reportService.exportExcel(year, month, 'all-users');
-      toast.success('Excel ডাউনলোড হয়েছে');
+      await reportService.exportExcel(year, month, "all-users");
+      toast.success("Excel ডাউনলোড হয়েছে");
     } catch (error) {
-      toast.error('এক্সপোর্ট করতে সমস্যা হয়েছে');
+      toast.error("এক্সপোর্ট করতে সমস্যা হয়েছে");
     } finally {
       setExporting(false);
     }
@@ -204,8 +210,7 @@ const AllUsersReport: React.FC = () => {
           <div className="hidden print:block text-center mb-8">
             <h1 className="text-2xl font-bold">মিল ম্যানেজমেন্ট সিস্টেম</h1>
             <h2 className="text-xl mt-2">
-              মাসিক রিপোর্ট (সকল ইউজার) -{' '}
-              {formatMonthYear(currentMonth)}
+              মাসিক রিপোর্ট (সকল ইউজার) - {formatMonthYear(currentMonth)}
             </h2>
           </div>
 
@@ -217,13 +222,13 @@ const AllUsersReport: React.FC = () => {
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <div>
                 <p className="text-sm text-gray-500 dark:text-gray-400">শুরু</p>
-                <p className="font-medium dark:text-gray-200">
+                <p className="dark:text-gray-200">
                   {formatDateBn(report.period.startDate)}
                 </p>
               </div>
               <div>
                 <p className="text-sm text-gray-500 dark:text-gray-400">শেষ</p>
-                <p className="font-medium dark:text-gray-200">
+                <p className="dark:text-gray-200">
                   {formatDateBn(report.period.endDate)}
                 </p>
               </div>
@@ -254,25 +259,33 @@ const AllUsersReport: React.FC = () => {
                   report.summary.grandTotalMeals ||
                   0}
               </p>
-              <p className="text-sm text-gray-600 dark:text-gray-400">দুপুর মিল</p>
+              <p className="text-sm text-gray-600 dark:text-gray-400">
+                দুপুর মিল
+              </p>
             </div>
             <div className="card bg-purple-50 dark:bg-purple-900/20 text-center">
               <p className="text-2xl font-bold text-purple-600 dark:text-purple-400">
                 {report.summary.dinner?.grandTotalMeals || 0}
               </p>
-              <p className="text-sm text-gray-600 dark:text-gray-400">রাত মিল</p>
+              <p className="text-sm text-gray-600 dark:text-gray-400">
+                রাত মিল
+              </p>
             </div>
             <div className="card bg-green-50 dark:bg-green-900/20 text-center">
               <p className="text-2xl font-bold text-green-600 dark:text-green-400">
                 ৳{report.summary.grandTotalCharge}
               </p>
-              <p className="text-sm text-gray-600 dark:text-gray-400">মোট চার্জ</p>
+              <p className="text-sm text-gray-600 dark:text-gray-400">
+                মোট চার্জ
+              </p>
             </div>
             <div className="card bg-red-50 dark:bg-red-900/20 text-center">
               <p className="text-2xl font-bold text-red-600 dark:text-red-400">
                 {report.summary.dueAdvanceSummary?.usersWithDue || 0}
               </p>
-              <p className="text-sm text-gray-600 dark:text-gray-400">বকেয়াদার</p>
+              <p className="text-sm text-gray-600 dark:text-gray-400">
+                বকেয়াদার
+              </p>
             </div>
           </div>
 
@@ -285,7 +298,9 @@ const AllUsersReport: React.FC = () => {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b bg-gray-50 dark:bg-gray-700">
-                    <th className="text-left py-3 px-4 dark:text-gray-200">নাম</th>
+                    <th className="text-left py-3 px-4 dark:text-gray-200">
+                      নাম
+                    </th>
                     <th className="text-center py-3 px-4 dark:text-gray-200">
                       দুপুর
                     </th>
@@ -306,8 +321,8 @@ const AllUsersReport: React.FC = () => {
                       key={user.user._id}
                       className={`border-b dark:border-gray-700 ${
                         index % 2 === 0
-                          ? 'bg-white dark:bg-gray-800'
-                          : 'bg-gray-50 dark:bg-gray-750'
+                          ? "bg-white dark:bg-gray-800"
+                          : "bg-gray-50 dark:bg-gray-750"
                       }`}
                     >
                       <td className="py-3 px-4 font-medium dark:text-gray-200">
@@ -323,11 +338,11 @@ const AllUsersReport: React.FC = () => {
                         ৳{user.totalCharge}
                       </td>
                       <td className="py-3 px-4 text-right">
-                        {user.totalDueAdvance?.type === 'due' ? (
+                        {user.totalDueAdvance?.type === "due" ? (
                           <span className="text-red-600 dark:text-red-400">
                             ৳{user.totalDueAdvance.amount} বাকি
                           </span>
-                        ) : user.totalDueAdvance?.type === 'advance' ? (
+                        ) : user.totalDueAdvance?.type === "advance" ? (
                           <span className="text-green-600 dark:text-green-400">
                             ৳{user.totalDueAdvance.amount} অগ্রিম
                           </span>
@@ -361,9 +376,7 @@ const AllUsersReport: React.FC = () => {
 
           {/* Print Footer */}
           <div className="hidden print:block text-center mt-8 pt-4 border-t text-sm text-gray-500">
-            <p>
-              তৈরি: {formatDateTimeShort(nowBD())}
-            </p>
+            <p>তৈরি: {formatDateTimeShort(nowBD())}</p>
           </div>
         </div>
       )}
