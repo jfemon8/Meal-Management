@@ -791,7 +791,7 @@ const Dashboard: React.FC = () => {
               <p className="text-sm text-gray-500 dark:text-gray-400">
                 শুরুর তারিখ
               </p>
-              <p className="font-medium text-gray-800 dark:text-gray-100">
+              <p className="text-gray-800 dark:text-gray-100">
                 {formatDateBn(monthSettings.startDate)}
               </p>
             </div>
@@ -799,7 +799,7 @@ const Dashboard: React.FC = () => {
               <p className="text-sm text-gray-500 dark:text-gray-400">
                 শেষের তারিখ
               </p>
-              <p className="font-medium text-gray-800 dark:text-gray-100">
+              <p className="text-gray-800 dark:text-gray-100">
                 {formatDateBn(monthSettings.endDate)}
               </p>
             </div>
@@ -851,7 +851,7 @@ const Dashboard: React.FC = () => {
                     }`}
                   />
                   <div>
-                    <p className="font-medium text-gray-800 dark:text-gray-200">
+                    <p className="text-gray-800 dark:text-gray-200">
                       {formatDateWithDayNoYear(day.date)}
                     </p>
                     <p className="text-sm text-gray-500 dark:text-gray-400">
