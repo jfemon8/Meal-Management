@@ -105,6 +105,29 @@ router.put('/cutoff-times', protect, isAdmin, [
     }
 });
 
+// @route   PUT /api/global-settings/default-meal-status
+// @desc    Update default meal status (Admin+ only)
+// @access  Private (Admin+)
+router.put('/default-meal-status', protect, isAdmin, async (req, res) => {
+    try {
+        const { lunch, dinner } = req.body;
+
+        const updates = { defaultMealStatus: {} };
+        if (lunch !== undefined) updates.defaultMealStatus.lunch = lunch;
+        if (dinner !== undefined) updates.defaultMealStatus.dinner = dinner;
+
+        const settings = await GlobalSettings.updateSettings(updates, req.user._id);
+
+        res.json({
+            message: 'ডিফল্ট মিল স্ট্যাটাস আপডেট হয়েছে',
+            defaultMealStatus: settings.defaultMealStatus
+        });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'সার্ভার এরর' });
+    }
+});
+
 // @route   PUT /api/global-settings/weekend-policy
 // @desc    Update weekend policy (Admin+ only)
 // @access  Private (Admin+)

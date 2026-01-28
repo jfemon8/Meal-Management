@@ -31,7 +31,7 @@ const globalSettingsSchema = new mongoose.Schema({
         },
         dinner: {
             type: Boolean,
-            default: true
+            default: false  // Dinner is OFF by default for all users
         }
     },
 

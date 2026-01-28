@@ -313,8 +313,9 @@ const getEffectiveMealStatus = async ({ date, mealType, manualMeal, holidays, se
     }
 
     // Check default meal status from settings
-    const defaultStatus = settings.defaultMealStatus || { lunch: true, dinner: true };
-    const isDefaultOn = defaultStatus[mealType] !== false;
+    // Dinner is OFF by default, lunch is ON by default
+    const defaultStatus = settings.defaultMealStatus || { lunch: true, dinner: false };
+    const isDefaultOn = defaultStatus[mealType] === true;
 
     // Check if should be OFF due to weekend/holiday policy
     const offCheck = await isDefaultMealOff(date, holidays, settings);
