@@ -22,7 +22,7 @@ import {
     isDefaultMealOff
 } from '../utils/dateUtils';
 import MealAuditLog from '../models/MealAuditLog';
-import mealRulesService from '../services/mealRulesService';
+import * as mealRulesService from '../services/mealRulesService';
 import { AuthRequest } from '../types';
 
 const router = express.Router();

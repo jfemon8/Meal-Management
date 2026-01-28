@@ -5,7 +5,7 @@ const loginHistorySchema = new mongoose.Schema({
     user: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User',
-        required: true,
+        required: false,  // Not required - failed logins for non-existent users won't have a user
         index: true
     },
     // Login attempt details

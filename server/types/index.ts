@@ -426,7 +426,7 @@ export interface IMealAuditLog {
 export type IMealAuditLogDocument = Document<Types.ObjectId> & IMealAuditLog;
 
 export interface ILoginHistory {
-  user: Types.ObjectId;
+  user?: Types.ObjectId;  // Optional - failed logins for non-existent users won't have a user
   loginAt: Date;
   ipAddress: string;
   userAgent: string;

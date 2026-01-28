@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { useAuth } from '../../context/AuthContext';
+import { useQueryClient } from '@tanstack/react-query';
 import { useTheme } from '../../context/ThemeContext';
 import toast from 'react-hot-toast';
 import { Mail, Lock, Eye, EyeOff, Sun, Moon } from 'lucide-react';
@@ -10,7 +10,7 @@ import { Input } from '../../components/ui/input';
 import { Label } from '../../components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../components/ui/card';
 import TwoFactorVerify from '../../components/Auth/TwoFactorVerify';
-import api from '../../services/api';
+import api, { setAuthToken } from '../../services/api';
 
 const Login: React.FC = () => {
     const [email, setEmail] = useState('');
@@ -19,7 +19,7 @@ const Login: React.FC = () => {
     const [loading, setLoading] = useState(false);
     const [requires2FA, setRequires2FA] = useState(false);
     const [userId, setUserId] = useState('');
-    const { login } = useAuth() as any;
+    const queryClient = useQueryClient();
     const { theme, toggleTheme } = useTheme();
     const navigate = useNavigate();
 
@@ -47,8 +47,10 @@ const Login: React.FC = () => {
                 return;
             }
 
-            // Normal login (no 2FA)
-            await login(email, password);
+            // Normal login (no 2FA) - use response from first request
+            const { token, accessToken, refreshToken, ...userData } = response.data;
+            setAuthToken(accessToken || token, refreshToken);
+            queryClient.setQueryData(['user'], userData);
             toast.success('সফলভাবে লগইন হয়েছে');
             navigate('/dashboard');
         } catch (error: any) {
