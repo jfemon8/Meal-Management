@@ -1,6 +1,6 @@
-import React, { useState, useEffect, type ChangeEvent } from 'react';
-import { userService, transactionService } from '../../services/mealService';
-import { formatDateBn, formatDateTimeShort } from '../../utils/dateUtils';
+import React, { useState, useEffect, type ChangeEvent } from "react";
+import { userService, transactionService } from "../../services/mealService";
+import { formatDateBn, formatDateTimeShort } from "../../utils/dateUtils";
 import {
   FiSearch,
   FiUser,
@@ -12,15 +12,21 @@ import {
   FiShield,
   FiClock,
   FiFilter,
-} from 'react-icons/fi';
-import type { User, Transaction, UserRole, BalanceType, TransactionType } from '../../types';
+} from "react-icons/fi";
+import type {
+  User,
+  Transaction,
+  UserRole,
+  BalanceType,
+  TransactionType,
+} from "../../types";
 
 // ============================================
 // Types
 // ============================================
 
-type RoleFilter = 'all' | UserRole;
-type StatusFilter = 'all' | 'active' | 'inactive';
+type RoleFilter = "all" | UserRole;
+type StatusFilter = "all" | "active" | "inactive";
 
 // ============================================
 // Component
@@ -29,15 +35,17 @@ type StatusFilter = 'all' | 'active' | 'inactive';
 const UsersList: React.FC = () => {
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
-  const [search, setSearch] = useState<string>('');
-  const [roleFilter, setRoleFilter] = useState<RoleFilter>('all');
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
+  const [search, setSearch] = useState<string>("");
+  const [roleFilter, setRoleFilter] = useState<RoleFilter>("all");
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
 
   // Profile modal state
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [showProfileModal, setShowProfileModal] = useState<boolean>(false);
   const [profileLoading, setProfileLoading] = useState<boolean>(false);
-  const [recentTransactions, setRecentTransactions] = useState<Transaction[]>([]);
+  const [recentTransactions, setRecentTransactions] = useState<Transaction[]>(
+    [],
+  );
 
   useEffect(() => {
     loadUsers();
@@ -48,7 +56,7 @@ const UsersList: React.FC = () => {
       const response = await userService.getAllUsers();
       setUsers(response);
     } catch (error) {
-      console.error('Error loading users:', error);
+      console.error("Error loading users:", error);
     } finally {
       setLoading(false);
     }
@@ -61,12 +69,15 @@ const UsersList: React.FC = () => {
 
     try {
       // Load recent transactions for this user
-      const txnResponse = await transactionService.getUserTransactions(user._id, {
-        limit: 10,
-      });
+      const txnResponse = await transactionService.getUserTransactions(
+        user._id,
+        {
+          limit: 10,
+        },
+      );
       setRecentTransactions(txnResponse.data || []);
     } catch (error) {
-      console.error('Error loading transactions:', error);
+      console.error("Error loading transactions:", error);
       setRecentTransactions([]);
     } finally {
       setProfileLoading(false);
@@ -83,51 +94,51 @@ const UsersList: React.FC = () => {
     const matchesSearch =
       user.name.toLowerCase().includes(search.toLowerCase()) ||
       user.email.toLowerCase().includes(search.toLowerCase());
-    const matchesRole = roleFilter === 'all' || user.role === roleFilter;
+    const matchesRole = roleFilter === "all" || user.role === roleFilter;
     const matchesStatus =
-      statusFilter === 'all' ||
-      (statusFilter === 'active' && user.isActive) ||
-      (statusFilter === 'inactive' && !user.isActive);
+      statusFilter === "all" ||
+      (statusFilter === "active" && user.isActive) ||
+      (statusFilter === "inactive" && !user.isActive);
 
     return matchesSearch && matchesRole && matchesStatus;
   });
 
   const getRoleLabel = (role: UserRole): string => {
     switch (role) {
-      case 'superadmin':
-        return 'সুপার এডমিন';
-      case 'admin':
-        return 'এডমিন';
-      case 'manager':
-        return 'ম্যানেজার';
+      case "superadmin":
+        return "সুপার এডমিন";
+      case "admin":
+        return "এডমিন";
+      case "manager":
+        return "ম্যানেজার";
       default:
-        return 'ইউজার';
+        return "ইউজার";
     }
   };
 
   const getRoleColor = (role: UserRole): string => {
     switch (role) {
-      case 'superadmin':
-        return 'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400';
-      case 'admin':
-        return 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400';
-      case 'manager':
-        return 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400';
+      case "superadmin":
+        return "bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400";
+      case "admin":
+        return "bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400";
+      case "manager":
+        return "bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400";
       default:
-        return 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400';
+        return "bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400";
     }
   };
 
   const getTransactionTypeLabel = (type: TransactionType): string => {
     switch (type) {
-      case 'deposit':
-        return 'জমা';
-      case 'deduction':
-        return 'কর্তন';
-      case 'adjustment':
-        return 'সমন্বয়';
-      case 'refund':
-        return 'রিফান্ড';
+      case "deposit":
+        return "জমা";
+      case "deduction":
+        return "কর্তন";
+      case "adjustment":
+        return "সমন্বয়";
+      case "refund":
+        return "রিফান্ড";
       default:
         return type;
     }
@@ -135,37 +146,37 @@ const UsersList: React.FC = () => {
 
   const getBalanceTypeLabel = (type: BalanceType): string => {
     switch (type) {
-      case 'breakfast':
-        return 'নাস্তা';
-      case 'lunch':
-        return 'দুপুর';
-      case 'dinner':
-        return 'রাত';
+      case "breakfast":
+        return "নাস্তা";
+      case "lunch":
+        return "দুপুর";
+      case "dinner":
+        return "রাত";
       default:
         return type;
     }
   };
 
   const getBalanceAmount = (
-    balances: User['balances'] | undefined,
-    type: BalanceType
+    balances: User["balances"] | undefined,
+    type: BalanceType,
   ): number => {
     if (!balances) return 0;
     const balance = balances[type];
-    if (typeof balance === 'number') return balance;
-    if (typeof balance === 'object' && balance !== null) {
+    if (typeof balance === "number") return balance;
+    if (typeof balance === "object" && balance !== null) {
       return (balance as { amount?: number }).amount ?? 0;
     }
     return 0;
   };
 
   const isBalanceFrozen = (
-    balances: User['balances'] | undefined,
-    type: BalanceType
+    balances: User["balances"] | undefined,
+    type: BalanceType,
   ): boolean => {
     if (!balances) return false;
     const balance = balances[type];
-    if (typeof balance === 'object' && balance !== null) {
+    if (typeof balance === "object" && balance !== null) {
       return (balance as { isFrozen?: boolean }).isFrozen ?? false;
     }
     return false;
@@ -187,9 +198,9 @@ const UsersList: React.FC = () => {
 
       {/* Search and Filters */}
       <div className="card">
-        <div className="flex flex-col md:flex-row gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {/* Search */}
-          <div className="relative flex-1">
+          <div className="relative">
             <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
             <input
               type="text"
@@ -262,7 +273,7 @@ const UsersList: React.FC = () => {
                   </p>
                   <span
                     className={`inline-block mt-1 px-2 py-0.5 text-xs rounded-full ${getRoleColor(
-                      user.role
+                      user.role,
                     )}`}
                   >
                     {getRoleLabel(user.role)}
@@ -276,7 +287,7 @@ const UsersList: React.FC = () => {
                     নাস্তা
                   </p>
                   <p className="font-bold text-blue-600 dark:text-blue-400">
-                    ৳{getBalanceAmount(user.balances, 'breakfast')}
+                    ৳{getBalanceAmount(user.balances, "breakfast")}
                   </p>
                 </div>
                 <div className="text-center">
@@ -284,13 +295,15 @@ const UsersList: React.FC = () => {
                     দুপুর
                   </p>
                   <p className="font-bold text-green-600 dark:text-green-400">
-                    ৳{getBalanceAmount(user.balances, 'lunch')}
+                    ৳{getBalanceAmount(user.balances, "lunch")}
                   </p>
                 </div>
                 <div className="text-center">
-                  <p className="text-sm text-gray-500 dark:text-gray-400">রাত</p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">
+                    রাত
+                  </p>
                   <p className="font-bold text-purple-600 dark:text-purple-400">
-                    ৳{getBalanceAmount(user.balances, 'dinner')}
+                    ৳{getBalanceAmount(user.balances, "dinner")}
                   </p>
                 </div>
                 <div className="text-center">
@@ -300,11 +313,11 @@ const UsersList: React.FC = () => {
                   <span
                     className={`px-2 py-1 text-xs rounded-full ${
                       user.isActive
-                        ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400'
-                        : 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400'
+                        ? "bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400"
+                        : "bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400"
                     }`}
                   >
-                    {user.isActive ? 'সক্রিয়' : 'নিষ্ক্রিয়'}
+                    {user.isActive ? "সক্রিয়" : "নিষ্ক্রিয়"}
                   </span>
                 </div>
 
@@ -358,7 +371,7 @@ const UsersList: React.FC = () => {
                   </h3>
                   <span
                     className={`inline-block mt-1 px-3 py-1 text-sm rounded-full ${getRoleColor(
-                      selectedUser.role
+                      selectedUser.role,
                     )}`}
                   >
                     {getRoleLabel(selectedUser.role)}
@@ -383,7 +396,7 @@ const UsersList: React.FC = () => {
                     <span className="text-sm">ফোন</span>
                   </div>
                   <p className="font-medium dark:text-gray-200">
-                    {selectedUser.phone || 'দেওয়া হয়নি'}
+                    {selectedUser.phone || "দেওয়া হয়নি"}
                   </p>
                 </div>
                 <div className="bg-gray-50 dark:bg-gray-700/50 p-4 rounded-lg">
@@ -394,7 +407,7 @@ const UsersList: React.FC = () => {
                   <p className="font-medium dark:text-gray-200">
                     {selectedUser.createdAt
                       ? formatDateBn(selectedUser.createdAt)
-                      : 'N/A'}
+                      : "N/A"}
                   </p>
                 </div>
                 <div className="bg-gray-50 dark:bg-gray-700/50 p-4 rounded-lg">
@@ -405,11 +418,11 @@ const UsersList: React.FC = () => {
                   <span
                     className={`inline-block px-2 py-1 text-sm rounded-full ${
                       selectedUser.isActive
-                        ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400'
-                        : 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400'
+                        ? "bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400"
+                        : "bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400"
                     }`}
                   >
-                    {selectedUser.isActive ? 'সক্রিয়' : 'নিষ্ক্রিয়'}
+                    {selectedUser.isActive ? "সক্রিয়" : "নিষ্ক্রিয়"}
                   </span>
                 </div>
               </div>
@@ -422,34 +435,34 @@ const UsersList: React.FC = () => {
                 <div className="grid grid-cols-3 gap-4">
                   <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg text-center">
                     <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">
-                      ৳{getBalanceAmount(selectedUser.balances, 'breakfast')}
+                      ৳{getBalanceAmount(selectedUser.balances, "breakfast")}
                     </p>
                     <p className="text-sm text-gray-600 dark:text-gray-400">
                       নাস্তা
                     </p>
-                    {isBalanceFrozen(selectedUser.balances, 'breakfast') && (
+                    {isBalanceFrozen(selectedUser.balances, "breakfast") && (
                       <span className="text-xs text-red-500">ফ্রিজ</span>
                     )}
                   </div>
                   <div className="bg-green-50 dark:bg-green-900/20 p-4 rounded-lg text-center">
                     <p className="text-2xl font-bold text-green-600 dark:text-green-400">
-                      ৳{getBalanceAmount(selectedUser.balances, 'lunch')}
+                      ৳{getBalanceAmount(selectedUser.balances, "lunch")}
                     </p>
                     <p className="text-sm text-gray-600 dark:text-gray-400">
                       দুপুর
                     </p>
-                    {isBalanceFrozen(selectedUser.balances, 'lunch') && (
+                    {isBalanceFrozen(selectedUser.balances, "lunch") && (
                       <span className="text-xs text-red-500">ফ্রিজ</span>
                     )}
                   </div>
                   <div className="bg-purple-50 dark:bg-purple-900/20 p-4 rounded-lg text-center">
                     <p className="text-2xl font-bold text-purple-600 dark:text-purple-400">
-                      ৳{getBalanceAmount(selectedUser.balances, 'dinner')}
+                      ৳{getBalanceAmount(selectedUser.balances, "dinner")}
                     </p>
                     <p className="text-sm text-gray-600 dark:text-gray-400">
                       রাত
                     </p>
-                    {isBalanceFrozen(selectedUser.balances, 'dinner') && (
+                    {isBalanceFrozen(selectedUser.balances, "dinner") && (
                       <span className="text-xs text-red-500">ফ্রিজ</span>
                     )}
                   </div>
@@ -479,7 +492,7 @@ const UsersList: React.FC = () => {
                       >
                         <div>
                           <p className="text-sm font-medium dark:text-gray-200">
-                            {getTransactionTypeLabel(txn.type)} -{' '}
+                            {getTransactionTypeLabel(txn.type)} -{" "}
                             {getBalanceTypeLabel(txn.balanceType)}
                           </p>
                           <p className="text-xs text-gray-500 dark:text-gray-400">
@@ -488,14 +501,14 @@ const UsersList: React.FC = () => {
                         </div>
                         <p
                           className={`font-bold ${
-                            txn.type === 'deposit' || txn.type === 'refund'
-                              ? 'text-green-600 dark:text-green-400'
-                              : 'text-red-600 dark:text-red-400'
+                            txn.type === "deposit" || txn.type === "refund"
+                              ? "text-green-600 dark:text-green-400"
+                              : "text-red-600 dark:text-red-400"
                           }`}
                         >
-                          {txn.type === 'deposit' || txn.type === 'refund'
-                            ? '+'
-                            : '-'}
+                          {txn.type === "deposit" || txn.type === "refund"
+                            ? "+"
+                            : "-"}
                           ৳{txn.amount}
                         </p>
                       </div>
@@ -514,11 +527,13 @@ const UsersList: React.FC = () => {
                     <span
                       className={`px-2 py-1 text-xs rounded-full ${
                         selectedUser.twoFactorAuth?.isEnabled
-                          ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400'
-                          : 'bg-gray-200 dark:bg-gray-600 text-gray-600 dark:text-gray-300'
+                          ? "bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400"
+                          : "bg-gray-200 dark:bg-gray-600 text-gray-600 dark:text-gray-300"
                       }`}
                     >
-                      {selectedUser.twoFactorAuth?.isEnabled ? 'সক্রিয়' : 'নিষ্ক্রিয়'}
+                      {selectedUser.twoFactorAuth?.isEnabled
+                        ? "সক্রিয়"
+                        : "নিষ্ক্রিয়"}
                     </span>
                   </div>
                 </div>
