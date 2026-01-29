@@ -115,9 +115,9 @@ const UserBalance: React.FC = () => {
       // Refresh selected user data
       if (selectedUser) {
         const refreshedUsers = await userService.getAllUsers();
-        setUsers(refreshedUsers);
+        setUsers(refreshedUsers || []);
         setSelectedUser(
-          refreshedUsers.find((u) => u._id === selectedUser._id) || null,
+          (refreshedUsers || []).find((u) => u._id === selectedUser._id) || null,
         );
       }
     } catch (error: unknown) {
@@ -147,11 +147,11 @@ const UserBalance: React.FC = () => {
         selectedUser._id,
         params,
       );
-      setTransactions(response.data);
+      setTransactions(response.data || []);
       setPagination({
-        page: response.page,
-        pages: response.totalPages,
-        total: response.total,
+        page: response.page || 1,
+        pages: response.totalPages || 1,
+        total: response.total || 0,
       });
     } catch (error) {
       console.error("Error loading transactions:", error);
@@ -540,13 +540,13 @@ const UserBalance: React.FC = () => {
                 <div className="flex items-center justify-center h-32">
                   <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary-600"></div>
                 </div>
-              ) : transactions.length === 0 ? (
+              ) : (transactions || []).length === 0 ? (
                 <p className="text-center text-gray-500 dark:text-gray-400 py-8">
                   কোন লেনদেন নেই
                 </p>
               ) : (
                 <div className="space-y-3">
-                  {transactions.map((txn) => (
+                  {(transactions || []).map((txn) => (
                     <div
                       key={txn._id}
                       className="p-3 bg-gray-50 dark:bg-gray-700 rounded-lg"
