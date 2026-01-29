@@ -296,7 +296,7 @@ router.post('/seed', protect, isAdmin, async (req: AuthRequest, res: Response) =
             }
         }
 
-        res.json({ message: `${addedCount}টি ছুটি যোগ করা হয়েছে` });
+        res.json({ message: `${addedCount}টি ছুটি যোগ করা হয়েছে`, count: addedCount });
     } catch (error) {
         console.error(error);
         res.status(500).json({ message: 'সার্ভার এরর' });
