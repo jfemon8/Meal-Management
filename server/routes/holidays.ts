@@ -8,16 +8,39 @@ import { AuthRequest } from '../types';
 
 const router = express.Router();
 
-// Bangladesh public holidays 2026 (sample data)
+// Bangladesh public holidays 2026 (Official Government Announcement)
+// Source: Ministry of Public Administration, Bangladesh - Total 28 days off
+// Reference: https://www.thedailystar.net/news/bangladesh/news/govt-announces-official-list-public-holidays-2026-4031596
 const defaultHolidays2026 = [
-    { date: '2026-02-21', name: 'International Mother Language Day', nameBn: 'আন্তর্জাতিক মাতৃভাষা দিবস', type: 'government' },
-    { date: '2026-03-17', name: 'Birthday of Father of the Nation', nameBn: 'জাতির পিতার জন্মদিন', type: 'government' },
-    { date: '2026-03-26', name: 'Independence Day', nameBn: 'স্বাধীনতা দিবস', type: 'government' },
-    { date: '2026-04-14', name: 'Bengali New Year', nameBn: 'পহেলা বৈশাখ', type: 'government' },
-    { date: '2026-05-01', name: 'May Day', nameBn: 'মে দিবস', type: 'government' },
-    { date: '2026-08-15', name: 'National Mourning Day', nameBn: 'জাতীয় শোক দিবস', type: 'government' },
-    { date: '2026-12-16', name: 'Victory Day', nameBn: 'বিজয় দিবস', type: 'government' },
-    { date: '2026-12-25', name: 'Christmas Day', nameBn: 'বড়দিন', type: 'government' }
+    // General Holidays (14 days)
+    { date: '2026-02-21', name: 'Shaheed Day & International Mother Language Day', nameBn: 'শহীদ দিবস ও আন্তর্জাতিক মাতৃভাষা দিবস', type: 'government', isRecurring: true },
+    { date: '2026-03-20', name: 'Jumatul Bida', nameBn: 'জুমাতুল বিদা', type: 'religious' },
+    { date: '2026-03-21', name: 'Eid ul-Fitr', nameBn: 'ঈদুল ফিতর', type: 'religious' },
+    { date: '2026-03-26', name: 'Independence Day', nameBn: 'স্বাধীনতা ও জাতীয় দিবস', type: 'government', isRecurring: true },
+    { date: '2026-05-01', name: 'May Day', nameBn: 'মে দিবস', type: 'government', isRecurring: true },
+    { date: '2026-05-01', name: 'Buddha Purnima', nameBn: 'বুদ্ধ পূর্ণিমা', type: 'religious' },
+    { date: '2026-05-28', name: 'Eid ul-Adha', nameBn: 'ঈদুল আযহা', type: 'religious' },
+    { date: '2026-08-05', name: 'Mass Uprising Day', nameBn: 'গণ-অভ্যুত্থান দিবস', type: 'government' },
+    { date: '2026-08-26', name: 'Eid-e-Miladunnabi', nameBn: 'ঈদে মিলাদুন্নবী (সা.)', type: 'religious' },
+    { date: '2026-09-04', name: 'Janmashtami', nameBn: 'জন্মাষ্টমী', type: 'religious' },
+    { date: '2026-10-21', name: 'Durga Puja (Bijoya Dashami)', nameBn: 'দুর্গাপূজা (বিজয়া দশমী)', type: 'religious' },
+    { date: '2026-12-16', name: 'Victory Day', nameBn: 'বিজয় দিবস', type: 'government', isRecurring: true },
+    { date: '2026-12-25', name: 'Christmas Day', nameBn: 'বড়দিন', type: 'religious', isRecurring: true },
+
+    // Holidays Under Executive Order (14 days)
+    { date: '2026-02-04', name: 'Shab-e-Barat', nameBn: 'শবে বরাত', type: 'religious' },
+    { date: '2026-03-17', name: 'Shab-e-Qadr', nameBn: 'শবে কদর', type: 'religious' },
+    { date: '2026-03-19', name: 'Eid ul-Fitr Holiday', nameBn: 'ঈদুল ফিতর ছুটি', type: 'religious' },
+    { date: '2026-03-22', name: 'Eid ul-Fitr Holiday', nameBn: 'ঈদুল ফিতর ছুটি', type: 'religious' },
+    { date: '2026-03-23', name: 'Eid ul-Fitr Holiday', nameBn: 'ঈদুল ফিতর ছুটি', type: 'religious' },
+    { date: '2026-04-14', name: 'Bengali New Year (Pahela Baishakh)', nameBn: 'পহেলা বৈশাখ', type: 'government', isRecurring: true },
+    { date: '2026-05-26', name: 'Eid ul-Adha Holiday', nameBn: 'ঈদুল আযহা ছুটি', type: 'religious' },
+    { date: '2026-05-27', name: 'Eid ul-Adha Holiday', nameBn: 'ঈদুল আযহা ছুটি', type: 'religious' },
+    { date: '2026-05-29', name: 'Eid ul-Adha Holiday', nameBn: 'ঈদুল আযহা ছুটি', type: 'religious' },
+    { date: '2026-05-30', name: 'Eid ul-Adha Holiday', nameBn: 'ঈদুল আযহা ছুটি', type: 'religious' },
+    { date: '2026-05-31', name: 'Eid ul-Adha Holiday', nameBn: 'ঈদুল আযহা ছুটি', type: 'religious' },
+    { date: '2026-06-26', name: 'Ashura', nameBn: 'আশুরা', type: 'religious' },
+    { date: '2026-10-20', name: 'Durga Puja (Mahanabami)', nameBn: 'দুর্গাপূজা (মহানবমী)', type: 'religious' },
 ];
 
 // @route   GET /api/holidays/upcoming

@@ -40,7 +40,9 @@
       "Bash(Get-ChildItem -Path \"d:\\\\Projects\\\\MealManagement\\\\server\" -Recurse -Include \"*.js\")",
       "Bash(Select-Object -Property FullName)",
       "Bash(find:*)",
-      "Bash(npm run typecheck:*)"
+      "Bash(npm run typecheck:*)",
+      "WebFetch(domain:www.thedailystar.net)",
+      "WebFetch(domain:www.timeanddate.com)"
     ]
   }
 }

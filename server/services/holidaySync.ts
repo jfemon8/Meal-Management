@@ -50,28 +50,57 @@ const mapHolidayType = (types: string[] = []): string => {
 };
 
 /**
- * Convert API holiday name to Bengali (basic mapping)
+ * Convert API holiday name to Bengali (comprehensive mapping)
  */
 const getBengaliName = (apiHoliday: NagerApiHoliday): string => {
-    // Map of common holiday names to Bengali
+    // Comprehensive map of holiday names to Bengali
     const nameMap: Record<string, string> = {
+        // National Holidays
         "International Mother Language Day": "আন্তর্জাতিক মাতৃভাষা দিবস",
+        "Shaheed Day": "শহীদ দিবস",
+        "Language Martyrs' Day": "শহীদ দিবস ও আন্তর্জাতিক মাতৃভাষা দিবস",
         "Sheikh Mujibur Rahman's Birthday": "জাতির পিতার জন্মদিন",
-        "Independence Day": "স্বাধীনতা দিবস",
+        "Independence Day": "স্বাধীনতা ও জাতীয় দিবস",
         "Bengali New Year": "পহেলা বৈশাখ",
+        "Pahela Baishakh": "পহেলা বৈশাখ",
         "May Day": "মে দিবস",
         "National Mourning Day": "জাতীয় শোক দিবস",
         "Victory Day": "বিজয় দিবস",
+        "Mass Uprising Day": "গণ-অভ্যুত্থান দিবস",
+        "Student-People Uprising Day": "গণ-অভ্যুত্থান দিবস",
+
+        // Islamic Holidays
         "Eid ul-Fitr": "ঈদুল ফিতর",
+        "Eid al-Fitr": "ঈদুল ফিতর",
         "Eid ul-Adha": "ঈদুল আযহা",
+        "Eid al-Adha": "ঈদুল আযহা",
         "Shab e-Qadr": "শবে কদর",
+        "Shab-e-qadr": "শবে কদর",
+        "Lailat al-Qadr": "শবে কদর",
         "Ashura": "আশুরা",
-        "Milad un-Nabi": "ঈদ-ই-মিলাদুন্নবী",
+        "Muharram": "মহররম",
+        "Milad un-Nabi": "ঈদে মিলাদুন্নবী (সা.)",
+        "Eid e-Milad-un Nabi": "ঈদে মিলাদুন্নবী (সা.)",
+        "Eid-e-Miladunnabi": "ঈদে মিলাদুন্নবী (সা.)",
         "Shab e-Barat": "শবে বরাত",
-        "Durga Puja": "দুর্গা পূজা",
+        "Shab-e-Barat": "শবে বরাত",
+        "Jumatul Bida": "জুমাতুল বিদা",
+
+        // Hindu Holidays
+        "Durga Puja": "দুর্গাপূজা",
+        "Mahanabami": "দুর্গাপূজা (মহানবমী)",
+        "Bijoya Dashami": "দুর্গাপূজা (বিজয়া দশমী)",
+        "Janmashtami": "জন্মাষ্টমী",
+        "Chaitra Sankranti": "চৈত্র সংক্রান্তি",
+
+        // Buddhist Holidays
         "Buddha Purnima": "বুদ্ধ পূর্ণিমা",
+        "Vesak": "বুদ্ধ পূর্ণিমা",
+        "Buddha Purnima/Vesak": "বুদ্ধ পূর্ণিমা",
+
+        // Christian Holidays
         "Christmas Day": "বড়দিন",
-        "Janmashtami": "জন্মাষ্টমী"
+        "Christmas": "বড়দিন"
     };
 
     // Return mapped Bengali name or use localName or original name
