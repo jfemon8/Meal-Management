@@ -1,7 +1,7 @@
-import React, { useState, useEffect, FormEvent, ChangeEvent } from 'react';
-import { userService, transactionService } from '../../services/mealService';
-import toast from 'react-hot-toast';
-import { formatDateTimeShort } from '../../utils/dateUtils';
+import React, { useState, useEffect, FormEvent, ChangeEvent } from "react";
+import { userService, transactionService } from "../../services/mealService";
+import toast from "react-hot-toast";
+import { formatDateTimeShort } from "../../utils/dateUtils";
 import {
   FiSearch,
   FiUser,
@@ -12,16 +12,16 @@ import {
   FiX,
   FiChevronLeft,
   FiChevronRight,
-} from 'react-icons/fi';
-import BDTIcon from '../../components/Icons/BDTIcon';
-import FreezeBalanceModal from '../../components/Wallet/FreezeBalanceModal';
+} from "react-icons/fi";
+import BDTIcon from "../../components/Icons/BDTIcon";
+import FreezeBalanceModal from "../../components/Wallet/FreezeBalanceModal";
 import type {
   User,
   Transaction,
   BalanceType,
   TransactionType,
   UserBalances,
-} from '../../types';
+} from "../../types";
 
 // ============================================
 // Types
@@ -30,7 +30,7 @@ import type {
 interface FormData {
   amount: string;
   balanceType: BalanceType;
-  type: 'deposit' | 'deduction';
+  type: "deposit" | "deduction";
   description: string;
 }
 
@@ -40,7 +40,7 @@ interface Pagination {
   total: number;
 }
 
-type HistoryFilter = 'all' | BalanceType;
+type HistoryFilter = "all" | BalanceType;
 
 // ============================================
 // Component
@@ -49,13 +49,13 @@ type HistoryFilter = 'all' | BalanceType;
 const UserBalance: React.FC = () => {
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
-  const [search, setSearch] = useState<string>('');
+  const [search, setSearch] = useState<string>("");
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [formData, setFormData] = useState<FormData>({
-    amount: '',
-    balanceType: 'breakfast',
-    type: 'deposit',
-    description: '',
+    amount: "",
+    balanceType: "breakfast",
+    type: "deposit",
+    description: "",
   });
   const [submitting, setSubmitting] = useState<boolean>(false);
   const [showFreezeModal, setShowFreezeModal] = useState<boolean>(false);
@@ -64,7 +64,7 @@ const UserBalance: React.FC = () => {
   const [showHistoryModal, setShowHistoryModal] = useState<boolean>(false);
   const [historyLoading, setHistoryLoading] = useState<boolean>(false);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
-  const [historyFilter, setHistoryFilter] = useState<HistoryFilter>('all');
+  const [historyFilter, setHistoryFilter] = useState<HistoryFilter>("all");
   const [pagination, setPagination] = useState<Pagination>({
     page: 1,
     pages: 1,
@@ -78,9 +78,10 @@ const UserBalance: React.FC = () => {
   const loadUsers = async (): Promise<void> => {
     try {
       const response = await userService.getAllUsers();
-      setUsers(response);
+      setUsers(response || []);
     } catch (error) {
-      console.error('Error loading users:', error);
+      console.error("Error loading users:", error);
+      toast.error("ইউজার লোড করতে সমস্যা হয়েছে");
     } finally {
       setLoading(false);
     }
@@ -90,7 +91,7 @@ const UserBalance: React.FC = () => {
     e.preventDefault();
 
     if (!selectedUser || !formData.amount) {
-      toast.error('ইউজার এবং পরিমাণ নির্বাচন করুন');
+      toast.error("ইউজার এবং পরিমাণ নির্বাচন করুন");
       return;
     }
 
@@ -101,27 +102,29 @@ const UserBalance: React.FC = () => {
         parseFloat(formData.amount),
         formData.balanceType,
         formData.type,
-        formData.description
+        formData.description,
       );
-      toast.success('ব্যালেন্স আপডেট হয়েছে');
+      toast.success("ব্যালেন্স আপডেট হয়েছে");
       loadUsers();
       setFormData({
-        amount: '',
-        balanceType: 'breakfast',
-        type: 'deposit',
-        description: '',
+        amount: "",
+        balanceType: "breakfast",
+        type: "deposit",
+        description: "",
       });
       // Refresh selected user data
       if (selectedUser) {
         const refreshedUsers = await userService.getAllUsers();
         setUsers(refreshedUsers);
         setSelectedUser(
-          refreshedUsers.find((u) => u._id === selectedUser._id) || null
+          refreshedUsers.find((u) => u._id === selectedUser._id) || null,
         );
       }
     } catch (error: unknown) {
       const err = error as { response?: { data?: { message?: string } } };
-      toast.error(err.response?.data?.message || 'ব্যালেন্স আপডেট ব্যর্থ হয়েছে');
+      toast.error(
+        err.response?.data?.message || "ব্যালেন্স আপডেট ব্যর্থ হয়েছে",
+      );
     } finally {
       setSubmitting(false);
     }
@@ -129,7 +132,7 @@ const UserBalance: React.FC = () => {
 
   const loadUserTransactions = async (
     page: number = 1,
-    balanceType: HistoryFilter = 'all'
+    balanceType: HistoryFilter = "all",
   ): Promise<void> => {
     if (!selectedUser) return;
 
@@ -137,12 +140,12 @@ const UserBalance: React.FC = () => {
     try {
       const params: { page: number; limit: number; balanceType?: BalanceType } =
         { page, limit: 15 };
-      if (balanceType !== 'all') {
+      if (balanceType !== "all") {
         params.balanceType = balanceType;
       }
       const response = await transactionService.getUserTransactions(
         selectedUser._id,
-        params
+        params,
       );
       setTransactions(response.data);
       setPagination({
@@ -151,8 +154,8 @@ const UserBalance: React.FC = () => {
         total: response.total,
       });
     } catch (error) {
-      console.error('Error loading transactions:', error);
-      toast.error('লেনদেন লোড করতে ব্যর্থ');
+      console.error("Error loading transactions:", error);
+      toast.error("লেনদেন লোড করতে ব্যর্থ");
     } finally {
       setHistoryLoading(false);
     }
@@ -160,8 +163,8 @@ const UserBalance: React.FC = () => {
 
   const openHistoryModal = (): void => {
     setShowHistoryModal(true);
-    setHistoryFilter('all');
-    loadUserTransactions(1, 'all');
+    setHistoryFilter("all");
+    loadUserTransactions(1, "all");
   };
 
   const handleFilterChange = (filter: HistoryFilter): void => {
@@ -175,35 +178,35 @@ const UserBalance: React.FC = () => {
 
   const getTransactionTypeLabel = (type: TransactionType): string => {
     const labels: Record<TransactionType, string> = {
-      deposit: 'জমা',
-      deduction: 'কাটা',
-      adjustment: 'এডজাস্ট',
-      refund: 'রিফান্ড',
-      reversal: 'রিভার্সাল',
+      deposit: "জমা",
+      deduction: "কাটা",
+      adjustment: "এডজাস্ট",
+      refund: "রিফান্ড",
+      reversal: "রিভার্সাল",
     };
     return labels[type] || type;
   };
 
   const getBalanceTypeLabel = (type: BalanceType): string => {
     const labels: Record<BalanceType, string> = {
-      breakfast: 'নাস্তা',
-      lunch: 'দুপুর',
-      dinner: 'রাত',
+      breakfast: "নাস্তা",
+      lunch: "দুপুর",
+      dinner: "রাত",
     };
     return labels[type] || type;
   };
 
   const getTransactionColor = (type: TransactionType): string => {
-    if (type === 'deposit' || type === 'refund')
-      return 'text-green-600 dark:text-green-400';
-    if (type === 'deduction') return 'text-red-600 dark:text-red-400';
-    return 'text-gray-600 dark:text-gray-400';
+    if (type === "deposit" || type === "refund")
+      return "text-green-600 dark:text-green-400";
+    if (type === "deduction") return "text-red-600 dark:text-red-400";
+    return "text-gray-600 dark:text-gray-400";
   };
 
-  const filteredUsers = users.filter(
+  const filteredUsers = (users || []).filter(
     (user) =>
-      user.name.toLowerCase().includes(search.toLowerCase()) ||
-      user.email.toLowerCase().includes(search.toLowerCase())
+      user.name?.toLowerCase().includes(search.toLowerCase()) ||
+      user.email?.toLowerCase().includes(search.toLowerCase()),
   );
 
   if (loading) {
@@ -243,29 +246,35 @@ const UserBalance: React.FC = () => {
               />
             </div>
 
-            {search && (
-              <div className="mt-2 max-h-48 overflow-y-auto border rounded-lg dark:border-gray-700">
-                {filteredUsers.map((user) => (
-                  <button
-                    key={user._id}
-                    type="button"
-                    onClick={() => {
-                      setSelectedUser(user);
-                      setSearch('');
-                    }}
-                    className="w-full p-3 text-left hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center gap-3"
-                  >
-                    <FiUser className="text-gray-400" />
-                    <div>
-                      <p className="font-medium dark:text-gray-100">
-                        {user.name}
-                      </p>
-                      <p className="text-sm text-gray-500 dark:text-gray-400">
-                        {user.email}
-                      </p>
-                    </div>
-                  </button>
-                ))}
+            {!selectedUser && (
+              <div className="mt-2 max-h-96 overflow-y-auto border rounded-lg dark:border-gray-700">
+                {filteredUsers.length === 0 ? (
+                  <p className="p-3 text-center text-gray-500 dark:text-gray-400">
+                    কোন ইউজার পাওয়া যায়নি
+                  </p>
+                ) : (
+                  filteredUsers.map((user) => (
+                    <button
+                      key={user._id}
+                      type="button"
+                      onClick={() => {
+                        setSelectedUser(user);
+                        setSearch("");
+                      }}
+                      className="w-full p-3 text-left hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center gap-3"
+                    >
+                      <FiUser className="text-gray-400" />
+                      <div>
+                        <p className="font-medium dark:text-gray-100">
+                          {user.name}
+                        </p>
+                        <p className="text-sm text-gray-500 dark:text-gray-400">
+                          {user.email}
+                        </p>
+                      </div>
+                    </button>
+                  ))
+                )}
               </div>
             )}
 
@@ -386,11 +395,13 @@ const UserBalance: React.FC = () => {
                 <div className="flex gap-4">
                   <button
                     type="button"
-                    onClick={() => setFormData({ ...formData, type: 'deposit' })}
+                    onClick={() =>
+                      setFormData({ ...formData, type: "deposit" })
+                    }
                     className={`flex-1 py-3 rounded-lg border-2 flex items-center justify-center gap-2 transition-colors ${
-                      formData.type === 'deposit'
-                        ? 'border-green-500 bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-400'
-                        : 'border-gray-200 dark:border-gray-700 dark:text-gray-300'
+                      formData.type === "deposit"
+                        ? "border-green-500 bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-400"
+                        : "border-gray-200 dark:border-gray-700 dark:text-gray-300"
                     }`}
                   >
                     <FiPlus />
@@ -399,12 +410,12 @@ const UserBalance: React.FC = () => {
                   <button
                     type="button"
                     onClick={() =>
-                      setFormData({ ...formData, type: 'deduction' })
+                      setFormData({ ...formData, type: "deduction" })
                     }
                     className={`flex-1 py-3 rounded-lg border-2 flex items-center justify-center gap-2 transition-colors ${
-                      formData.type === 'deduction'
-                        ? 'border-red-500 bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-400'
-                        : 'border-gray-200 dark:border-gray-700 dark:text-gray-300'
+                      formData.type === "deduction"
+                        ? "border-red-500 bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-400"
+                        : "border-gray-200 dark:border-gray-700 dark:text-gray-300"
                     }`}
                   >
                     <FiMinus />
@@ -449,14 +460,14 @@ const UserBalance: React.FC = () => {
                 type="submit"
                 disabled={submitting}
                 className={`btn w-full py-3 ${
-                  formData.type === 'deposit' ? 'btn-primary' : 'btn-danger'
+                  formData.type === "deposit" ? "btn-primary" : "btn-danger"
                 }`}
               >
                 {submitting
-                  ? 'প্রসেসিং...'
-                  : formData.type === 'deposit'
-                  ? 'জমা করুন'
-                  : 'কাটুন'}
+                  ? "প্রসেসিং..."
+                  : formData.type === "deposit"
+                    ? "জমা করুন"
+                    : "কাটুন"}
               </button>
             </>
           )}
@@ -503,23 +514,23 @@ const UserBalance: React.FC = () => {
             {/* Filter Tabs */}
             <div className="p-4 border-b dark:border-gray-700">
               <div className="flex gap-2 flex-wrap">
-                {(['all', 'breakfast', 'lunch', 'dinner'] as HistoryFilter[]).map(
-                  (filter) => (
-                    <button
-                      key={filter}
-                      onClick={() => handleFilterChange(filter)}
-                      className={`px-3 py-1 rounded text-sm transition-colors ${
-                        historyFilter === filter
-                          ? 'bg-primary-600 text-white'
-                          : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
-                      }`}
-                    >
-                      {filter === 'all'
-                        ? 'সব'
-                        : getBalanceTypeLabel(filter as BalanceType)}
-                    </button>
-                  )
-                )}
+                {(
+                  ["all", "breakfast", "lunch", "dinner"] as HistoryFilter[]
+                ).map((filter) => (
+                  <button
+                    key={filter}
+                    onClick={() => handleFilterChange(filter)}
+                    className={`px-3 py-1 rounded text-sm transition-colors ${
+                      historyFilter === filter
+                        ? "bg-primary-600 text-white"
+                        : "bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600"
+                    }`}
+                  >
+                    {filter === "all"
+                      ? "সব"
+                      : getBalanceTypeLabel(filter as BalanceType)}
+                  </button>
+                ))}
               </div>
             </div>
 
@@ -545,7 +556,7 @@ const UserBalance: React.FC = () => {
                           <div className="flex items-center gap-2 flex-wrap">
                             <span
                               className={`font-medium ${getTransactionColor(
-                                txn.type
+                                txn.type,
                               )}`}
                             >
                               {getTransactionTypeLabel(txn.type)}
@@ -564,7 +575,7 @@ const UserBalance: React.FC = () => {
                           </p>
                           <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
                             {formatDateTimeShort(txn.createdAt)}
-                            {typeof txn.performedBy === 'object' &&
+                            {typeof txn.performedBy === "object" &&
                               txn.performedBy?.name && (
                                 <span className="ml-2">
                                   • by {txn.performedBy.name}
@@ -576,11 +587,11 @@ const UserBalance: React.FC = () => {
                           <p
                             className={`font-bold ${
                               txn.amount >= 0
-                                ? 'text-green-600 dark:text-green-400'
-                                : 'text-red-600 dark:text-red-400'
+                                ? "text-green-600 dark:text-green-400"
+                                : "text-red-600 dark:text-red-400"
                             }`}
                           >
-                            {txn.amount >= 0 ? '+' : ''}৳{txn.amount.toFixed(2)}
+                            {txn.amount >= 0 ? "+" : ""}৳{txn.amount.toFixed(2)}
                           </p>
                           <p className="text-xs text-gray-500 dark:text-gray-400">
                             ৳{txn.previousBalance?.toFixed(2)} → ৳
