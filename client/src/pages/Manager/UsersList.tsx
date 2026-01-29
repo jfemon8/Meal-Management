@@ -214,22 +214,20 @@ const UsersList: React.FC = () => {
           </div>
 
           {/* Role Filter */}
-          <div className="flex items-center gap-2">
-            <FiFilter className="text-gray-400" />
-            <select
-              value={roleFilter}
-              onChange={(e: ChangeEvent<HTMLSelectElement>) =>
-                setRoleFilter(e.target.value as RoleFilter)
-              }
-              className="input py-2"
-            >
-              <option value="all">সব রোল</option>
-              <option value="user">ইউজার</option>
-              <option value="manager">ম্যানেজার</option>
-              <option value="admin">এডমিন</option>
-              <option value="superadmin">সুপার এডমিন</option>
-            </select>
-          </div>
+
+          <select
+            value={roleFilter}
+            onChange={(e: ChangeEvent<HTMLSelectElement>) =>
+              setRoleFilter(e.target.value as RoleFilter)
+            }
+            className="input py-2"
+          >
+            <option value="all">সব রোল</option>
+            <option value="user">ইউজার</option>
+            <option value="manager">ম্যানেজার</option>
+            <option value="admin">এডমিন</option>
+            <option value="superadmin">সুপার এডমিন</option>
+          </select>
 
           {/* Status Filter */}
           <select
