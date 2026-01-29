@@ -14,6 +14,7 @@ import {
   FiX,
 } from 'react-icons/fi';
 import type { User, UserRole } from '../../types';
+import { useConfirmModal } from '../../components/ui/ConfirmModal';
 
 // ============================================
 // Types
@@ -38,6 +39,7 @@ const ManageUsers: React.FC = () => {
   const [search, setSearch] = useState<string>('');
   const [editingUser, setEditingUser] = useState<string | null>(null);
   const [roleChange, setRoleChange] = useState<string>('');
+  const { open: openConfirm, ConfirmModalComponent } = useConfirmModal();
 
   // Password reset states
   const [showResetPasswordModal, setShowResetPasswordModal] = useState<boolean>(false);
@@ -88,12 +90,13 @@ const ManageUsers: React.FC = () => {
   };
 
   const handleDelete = async (userId: string): Promise<void> => {
-    if (
-      !window.confirm(
-        'আপনি কি নিশ্চিত যে এই ইউজার ডিলিট করতে চান? এটি পূর্বাবস্থায় ফেরানো যাবে না।'
-      )
-    )
-      return;
+    const confirmed = await openConfirm({
+      title: 'ইউজার ডিলিট করুন',
+      message: 'আপনি কি নিশ্চিত যে এই ইউজার ডিলিট করতে চান? এটি পূর্বাবস্থায় ফেরানো যাবে না।',
+      variant: 'danger',
+      confirmText: 'ডিলিট করুন',
+    });
+    if (!confirmed) return;
 
     try {
       await userService.deleteUser(userId);
@@ -431,6 +434,8 @@ const ManageUsers: React.FC = () => {
           </div>
         </div>
       )}
+
+      <ConfirmModalComponent />
     </div>
   );
 };

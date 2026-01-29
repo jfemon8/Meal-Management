@@ -27,6 +27,7 @@ import {
     usePermanentDeleteUser,
     useCleanupOrphans
 } from '../../hooks/queries/useDataControl';
+import { useConfirmModal } from '../../components/ui/ConfirmModal';
 
 // ============================================
 // Types
@@ -135,6 +136,7 @@ const DataControl: React.FC = () => {
     const [resetType, setResetType] = useState<string>('');
     const [resetReason, setResetReason] = useState<string>('');
     const [showResetConfirm, setShowResetConfirm] = useState<boolean>(false);
+    const { open: openConfirm, ConfirmModalComponent } = useConfirmModal();
 
     // Queries
     const { data: summary, isLoading: summaryLoading, refetch: refetchSummary } = useDataSummary() as {
@@ -235,9 +237,14 @@ const DataControl: React.FC = () => {
     };
 
     const handlePermanentDelete = async (userId: string): Promise<void> => {
-        if (!window.confirm('এই ইউজার এবং তার সকল ডাটা স্থায়ীভাবে মুছে ফেলা হবে। আপনি কি নিশ্চিত?')) {
-            return;
-        }
+        const confirmed = await openConfirm({
+            title: 'স্থায়ীভাবে মুছে ফেলুন',
+            message: 'এই ইউজার এবং তার সকল ডাটা স্থায়ীভাবে মুছে ফেলা হবে। এই অ্যাকশন পূর্বাবস্থায় ফেরানো যাবে না।',
+            variant: 'danger',
+            confirmText: 'স্থায়ীভাবে মুছুন',
+        });
+        if (!confirmed) return;
+
         try {
             const result = (await permanentDelete.mutateAsync(userId)) as unknown as DeleteResult;
             alert(`স্থায়ীভাবে মুছে ফেলা হয়েছে। মুছে ফেলা ডাটা: ${JSON.stringify(result.deletedCounts)}`);
@@ -741,6 +748,8 @@ const DataControl: React.FC = () => {
                     </div>
                 </div>
             )}
+
+            <ConfirmModalComponent />
         </div>
     );
 };

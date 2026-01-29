@@ -25,6 +25,7 @@ import {
 } from 'react-icons/fi';
 import BDTIcon from '../../components/Icons/BDTIcon';
 import type { UserRole } from '../../types';
+import { useConfirmModal } from '../../components/ui/ConfirmModal';
 
 // ============================================
 // Types
@@ -95,6 +96,7 @@ const GroupwiseAdmin: React.FC = () => {
   const [groupMembers, setGroupMembers] = useState<Record<string, GroupMember[]>>({});
   const [loadingMembers, setLoadingMembers] = useState<Record<string, boolean>>({});
   const [filterStatus, setFilterStatus] = useState<FilterStatus>('all');
+  const { open: openConfirm, ConfirmModalComponent } = useConfirmModal();
 
   // Check if current user is only a group manager (not admin/superadmin)
   const isOnlyGroupManager = user?.isGroupManager && !isAdmin && !isSuperAdmin;
@@ -248,7 +250,13 @@ const GroupwiseAdmin: React.FC = () => {
     const newStatus = !member.isActive;
     const action = newStatus ? 'সক্রিয়' : 'নিষ্ক্রিয়';
 
-    if (!window.confirm(`আপনি কি নিশ্চিত যে ${member.name} কে ${action} করতে চান?`)) return;
+    const confirmed = await openConfirm({
+      title: `ইউজার ${action} করুন`,
+      message: `আপনি কি নিশ্চিত যে ${member.name} কে ${action} করতে চান?`,
+      variant: newStatus ? 'success' : 'warning',
+      confirmText: `${action} করুন`,
+    });
+    if (!confirmed) return;
 
     try {
       await userService.updateUserStatus(member._id, newStatus);
@@ -266,12 +274,13 @@ const GroupwiseAdmin: React.FC = () => {
   };
 
   const handleDeleteUser = async (member: GroupMember): Promise<void> => {
-    if (
-      !window.confirm(
-        `আপনি কি নিশ্চিত যে "${member.name}" ডিলিট করতে চান? এটি পূর্বাবস্থায় ফেরানো যাবে না।`
-      )
-    )
-      return;
+    const confirmed = await openConfirm({
+      title: 'ইউজার ডিলিট করুন',
+      message: `আপনি কি নিশ্চিত যে "${member.name}" ডিলিট করতে চান? এটি পূর্বাবস্থায় ফেরানো যাবে না।`,
+      variant: 'danger',
+      confirmText: 'ডিলিট করুন',
+    });
+    if (!confirmed) return;
 
     try {
       await userService.deleteUser(member._id);
@@ -901,6 +910,8 @@ const GroupwiseAdmin: React.FC = () => {
           </div>
         </div>
       )}
+
+      <ConfirmModalComponent />
     </div>
   );
 };

@@ -11,6 +11,7 @@ import {
   FiDownload,
 } from 'react-icons/fi';
 import type { Holiday, HolidayType } from '../../types';
+import { useConfirmModal } from '../../components/ui/ConfirmModal';
 
 // ============================================
 // Types
@@ -42,6 +43,7 @@ const HolidayManagement: React.FC = () => {
   });
   const [submitting, setSubmitting] = useState<boolean>(false);
   const [year, setYear] = useState<number>(nowBD().getFullYear());
+  const { open: openConfirm, ConfirmModalComponent } = useConfirmModal();
 
   useEffect(() => {
     loadHolidays();
@@ -111,7 +113,13 @@ const HolidayManagement: React.FC = () => {
   };
 
   const handleDelete = async (id: string): Promise<void> => {
-    if (!window.confirm('আপনি কি নিশ্চিত যে এই ছুটি মুছতে চান?')) return;
+    const confirmed = await openConfirm({
+      title: 'ছুটি মুছে ফেলুন',
+      message: 'আপনি কি নিশ্চিত যে এই ছুটি মুছতে চান?',
+      variant: 'danger',
+      confirmText: 'মুছে ফেলুন',
+    });
+    if (!confirmed) return;
 
     try {
       await holidayService.deleteHoliday(id);
@@ -124,7 +132,13 @@ const HolidayManagement: React.FC = () => {
   };
 
   const handleSeedHolidays = async (): Promise<void> => {
-    if (!window.confirm(`${year} সালের ডিফল্ট ছুটিগুলো যোগ করতে চান?`)) return;
+    const confirmed = await openConfirm({
+      title: 'ডিফল্ট ছুটি যোগ করুন',
+      message: `${year} সালের ডিফল্ট ছুটিগুলো যোগ করতে চান?`,
+      variant: 'info',
+      confirmText: 'যোগ করুন',
+    });
+    if (!confirmed) return;
 
     try {
       const response = await holidayService.seedHolidays(year);
@@ -383,6 +397,8 @@ const HolidayManagement: React.FC = () => {
           </div>
         )}
       </div>
+
+      <ConfirmModalComponent />
     </div>
   );
 };

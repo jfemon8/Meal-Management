@@ -17,6 +17,7 @@ import {
   FiChevronDown,
   FiChevronUp,
 } from 'react-icons/fi';
+import { useConfirmModal } from '../../components/ui/ConfirmModal';
 
 // ============================================
 // Types
@@ -78,6 +79,7 @@ const GroupManagement: React.FC = () => {
   const [groups, setGroups] = useState<Group[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [search, setSearch] = useState<string>('');
+  const { open: openConfirm, ConfirmModalComponent } = useConfirmModal();
 
   // Modal states
   const [showCreateModal, setShowCreateModal] = useState<boolean>(false);
@@ -175,12 +177,13 @@ const GroupManagement: React.FC = () => {
   };
 
   const handleDeleteGroup = async (group: Group): Promise<void> => {
-    if (
-      !window.confirm(
-        `আপনি কি নিশ্চিত যে "${group.name}" গ্রুপ ডিলিট করতে চান? এটি পূর্বাবস্থায় ফেরানো যাবে না।`
-      )
-    )
-      return;
+    const confirmed = await openConfirm({
+      title: 'গ্রুপ ডিলিট করুন',
+      message: `আপনি কি নিশ্চিত যে "${group.name}" গ্রুপ ডিলিট করতে চান? এটি পূর্বাবস্থায় ফেরানো যাবে না।`,
+      variant: 'danger',
+      confirmText: 'ডিলিট করুন',
+    });
+    if (!confirmed) return;
 
     try {
       await groupService.deleteGroup(group._id);
@@ -214,7 +217,13 @@ const GroupManagement: React.FC = () => {
   };
 
   const handleRemoveMember = async (userId: string): Promise<void> => {
-    if (!window.confirm('আপনি কি নিশ্চিত যে এই সদস্যকে গ্রুপ থেকে সরাতে চান?')) return;
+    const confirmed = await openConfirm({
+      title: 'সদস্য সরান',
+      message: 'আপনি কি নিশ্চিত যে এই সদস্যকে গ্রুপ থেকে সরাতে চান?',
+      variant: 'warning',
+      confirmText: 'সরিয়ে দিন',
+    });
+    if (!confirmed) return;
 
     if (!selectedGroup) return;
 
@@ -890,6 +899,8 @@ const GroupManagement: React.FC = () => {
           </div>
         </div>
       )}
+
+      <ConfirmModalComponent />
     </div>
   );
 };

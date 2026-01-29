@@ -17,6 +17,7 @@ import {
 } from 'react-icons/fi';
 import api from '../../services/api';
 import toast from 'react-hot-toast';
+import { useConfirmModal } from '../../components/ui/ConfirmModal';
 
 interface SystemStats {
     database: {
@@ -57,6 +58,7 @@ const SystemSettings: React.FC = () => {
     const [actionLoading, setActionLoading] = useState<string | null>(null);
     const [showBackupList, setShowBackupList] = useState(false);
     const [showRestoreConfirm, setShowRestoreConfirm] = useState<Backup | null>(null);
+    const { open: openConfirm, ConfirmModalComponent } = useConfirmModal();
 
     const fetchStats = async () => {
         setLoading(true);
@@ -170,7 +172,13 @@ const SystemSettings: React.FC = () => {
     };
 
     const handleDeleteBackup = async (filename: string) => {
-        if (!window.confirm('এই ব্যাকআপটি মুছে ফেলতে চান?')) return;
+        const confirmed = await openConfirm({
+            title: 'ব্যাকআপ মুছে ফেলুন',
+            message: 'আপনি কি এই ব্যাকআপটি মুছে ফেলতে চান?',
+            variant: 'danger',
+            confirmText: 'মুছে ফেলুন',
+        });
+        if (!confirmed) return;
 
         try {
             await api.delete(`/backup/${filename}`);
@@ -198,7 +206,13 @@ const SystemSettings: React.FC = () => {
     };
 
     const handleClearOldBackups = async () => {
-        if (!window.confirm('৩০ দিনের পুরানো ব্যাকআপ মুছে ফেলা হবে। আপনি কি নিশ্চিত?')) return;
+        const confirmed = await openConfirm({
+            title: 'পুরাতন ব্যাকআপ মুছুন',
+            message: '৩০ দিনের পুরানো ব্যাকআপ মুছে ফেলা হবে। আপনি কি নিশ্চিত?',
+            variant: 'warning',
+            confirmText: 'মুছে ফেলুন',
+        });
+        if (!confirmed) return;
 
         setActionLoading('cleanBackups');
         try {
@@ -213,7 +227,13 @@ const SystemSettings: React.FC = () => {
     };
 
     const handleClearOldLogs = async () => {
-        if (!window.confirm('৯০ দিনের পুরানো লগ মুছে ফেলা হবে। আপনি কি নিশ্চিত?')) return;
+        const confirmed = await openConfirm({
+            title: 'পুরানো লগ মুছুন',
+            message: '৯০ দিনের পুরানো লগ মুছে ফেলা হবে। আপনি কি নিশ্চিত?',
+            variant: 'warning',
+            confirmText: 'মুছে ফেলুন',
+        });
+        if (!confirmed) return;
 
         setActionLoading('logs');
         try {
@@ -584,6 +604,8 @@ const SystemSettings: React.FC = () => {
                     </div>
                 </div>
             )}
+
+            <ConfirmModalComponent />
         </div>
     );
 };

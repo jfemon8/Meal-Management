@@ -25,6 +25,7 @@ import {
     useDeleteRateRule,
     useTestRateCalculation
 } from '../../hooks/queries/useSystemConfig';
+import { useConfirmModal } from '../../components/ui/ConfirmModal';
 
 // ============================================
 // Types
@@ -141,6 +142,7 @@ const SystemConfig: React.FC = () => {
     const [showRuleModal, setShowRuleModal] = useState<boolean>(false);
     const [editingRuleIndex, setEditingRuleIndex] = useState<number | null>(null);
     const [testResult, setTestResult] = useState<TestResult | null>(null);
+    const { open: openConfirm, ConfirmModalComponent } = useConfirmModal();
 
     // Maintenance form
     const [maintenanceForm, setMaintenanceForm] = useState<MaintenanceForm>({
@@ -244,7 +246,14 @@ const SystemConfig: React.FC = () => {
     };
 
     const handleDisableMaintenance = async (): Promise<void> => {
-        if (!window.confirm('মেইনটেন্যান্স মোড বন্ধ করতে চান?')) return;
+        const confirmed = await openConfirm({
+            title: 'মেইনটেন্যান্স মোড বন্ধ করুন',
+            message: 'আপনি কি মেইনটেন্যান্স মোড বন্ধ করতে চান? সিস্টেম সবার জন্য পুনরায় সচল হবে।',
+            variant: 'warning',
+            confirmText: 'বন্ধ করুন',
+        });
+        if (!confirmed) return;
+
         try {
             await disableMaintenance.mutateAsync();
         } catch (error) {
@@ -287,7 +296,14 @@ const SystemConfig: React.FC = () => {
     };
 
     const handleDeleteRule = async (index: number): Promise<void> => {
-        if (!window.confirm('এই রুল মুছে ফেলতে চান?')) return;
+        const confirmed = await openConfirm({
+            title: 'রুল মুছে ফেলুন',
+            message: 'আপনি কি এই রেট রুল মুছে ফেলতে চান?',
+            variant: 'danger',
+            confirmText: 'মুছে ফেলুন',
+        });
+        if (!confirmed) return;
+
         try {
             await deleteRateRule.mutateAsync(index);
         } catch (error) {
@@ -930,6 +946,8 @@ const SystemConfig: React.FC = () => {
                     </div>
                 </div>
             )}
+
+            <ConfirmModalComponent />
         </div>
     );
 };
