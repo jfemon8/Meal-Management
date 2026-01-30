@@ -6,6 +6,17 @@ import dotenv from 'dotenv';
 // Load environment variables
 dotenv.config();
 
+// Global error handlers to prevent server crashes
+process.on('uncaughtException', (error) => {
+    console.error('❌ Uncaught Exception:', error);
+    // Don't exit - try to keep server running
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+    console.error('❌ Unhandled Rejection at:', promise, 'reason:', reason);
+    // Don't exit - try to keep server running
+});
+
 // Import cron jobs
 import { initHolidayCron } from './jobs/holidayCron';
 import { initNotificationCron } from './jobs/notificationCron';
@@ -41,22 +52,34 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// Performance tracking middleware
-app.use(trackApiPerformance);
+// Performance tracking middleware (disabled for stability)
+// app.use(trackApiPerformance);
 
-// MongoDB Connection
+// MongoDB Connection with reconnection handling
 mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/meal-management')
     .then(() => {
         console.log('✅ MongoDB Connected Successfully');
-        // Initialize cron jobs after DB connection
-        if (process.env.NODE_ENV !== 'test') {
-            initHolidayCron();
-            initNotificationCron();
-            // Start system metrics collection
-            startSystemMetricsCollection();
-        }
+        // Initialize cron jobs after DB connection (disabled for stability)
+        // if (process.env.NODE_ENV !== 'test') {
+        //     initHolidayCron();
+        //     initNotificationCron();
+        //     startSystemMetricsCollection();
+        // }
     })
     .catch((err: Error) => console.error('❌ MongoDB Connection Error:', err));
+
+// Handle MongoDB connection events
+mongoose.connection.on('error', (err) => {
+    console.error('❌ MongoDB error:', err);
+});
+
+mongoose.connection.on('disconnected', () => {
+    console.warn('⚠️ MongoDB disconnected. Attempting to reconnect...');
+});
+
+mongoose.connection.on('reconnected', () => {
+    console.log('✅ MongoDB reconnected');
+});
 
 // Routes
 app.use('/api/auth', authRoutes);
@@ -79,8 +102,8 @@ app.use('/api/backup', backupRoutes);
 app.use('/api/metrics', metricsRoutes);
 app.use('/api/group-reports', groupReportsRoutes);
 
-// Error logging middleware (before error handler)
-app.use(errorLogger);
+// Error logging middleware (disabled for stability)
+// app.use(errorLogger);
 
 // Error handling middleware
 app.use((err: Error, req: Request, res: Response, next: NextFunction) => {

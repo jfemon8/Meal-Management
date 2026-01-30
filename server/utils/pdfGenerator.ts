@@ -1,7 +1,26 @@
 // @ts-ignore
 import PDFDocument from 'pdfkit';
 import path from 'path';
+import fs from 'fs';
 import { Response } from 'express';
+
+// Bengali font path for PDF generation - try multiple locations
+const FONT_PATHS = [
+    path.join(__dirname, '..', 'assets', 'fonts', 'NotoSansBengali-Regular.ttf'),
+    path.join(process.cwd(), 'server', 'assets', 'fonts', 'NotoSansBengali-Regular.ttf'),
+    path.resolve('server', 'assets', 'fonts', 'NotoSansBengali-Regular.ttf')
+];
+
+let BENGALI_FONT_PATH = '';
+let BENGALI_FONT_EXISTS = false;
+
+for (const fontPath of FONT_PATHS) {
+    if (fs.existsSync(fontPath)) {
+        BENGALI_FONT_PATH = fontPath;
+        BENGALI_FONT_EXISTS = true;
+        break;
+    }
+}
 
 interface UserInfo {
     name: string;
@@ -85,6 +104,16 @@ const generateLunchStatementPDF = (data: LunchStatementData, res: Response): voi
             Subject: 'মাসিক লাঞ্চ স্টেটমেন্ট'
         }
     });
+
+    // Register Bengali font if available
+    if (BENGALI_FONT_EXISTS) {
+        try {
+            doc.registerFont('Bengali', BENGALI_FONT_PATH);
+            doc.font('Bengali');
+        } catch (fontError) {
+            console.error('Bengali font registration error:', fontError);
+        }
+    }
 
     // Set response headers
     res.setHeader('Content-Type', 'application/pdf');
@@ -184,6 +213,16 @@ const generateGroupLunchStatementPDF = (data: GroupLunchStatementData, res: Resp
             Subject: 'মাসিক গ্রুপ লাঞ্চ স্টেটমেন্ট'
         }
     });
+
+    // Register Bengali font if available
+    if (BENGALI_FONT_EXISTS) {
+        try {
+            doc.registerFont('Bengali', BENGALI_FONT_PATH);
+            doc.font('Bengali');
+        } catch (fontError) {
+            console.error('Bengali font registration error:', fontError);
+        }
+    }
 
     // Set response headers
     res.setHeader('Content-Type', 'application/pdf');

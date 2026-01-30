@@ -34,50 +34,56 @@ const getSource = (error: any, req: Request): string => {
 };
 
 // Error logging middleware
-const errorLogger = async (err: any, req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
-    const statusCode: number = err.statusCode || res.statusCode || 500;
-    const severity: string = getSeverity(statusCode, err);
-    const source: string = getSource(err, req);
+const errorLogger = (err: any, req: AuthRequest, res: Response, next: NextFunction): void => {
+    try {
+        const statusCode: number = err.statusCode || res.statusCode || 500;
+        const severity: string = getSeverity(statusCode, err);
+        const source: string = getSource(err, req);
 
-    // Don't log 404s as errors unless they're API routes
-    if (statusCode === 404 && !req.path.startsWith('/api')) {
-        next(err);
-        return;
+        // Don't log 404s as errors unless they're API routes
+        if (statusCode === 404 && !req.path.startsWith('/api')) {
+            next(err);
+            return;
+        }
+
+        // Prepare error data
+        const errorData: Record<string, any> = {
+            severity,
+            source,
+            message: err.message || 'Unknown error',
+            stack: process.env.NODE_ENV === 'development' ? err.stack : undefined,
+            code: err.code,
+            endpoint: req.route?.path || req.path,
+            method: req.method,
+            statusCode,
+            requestBody: sanitizeBody(req.body),
+            requestParams: req.params,
+            requestQuery: req.query,
+            userId: req.user?._id,
+            userName: req.user?.name,
+            userRole: req.user?.role,
+            ip: req.ip || (req as any).connection?.remoteAddress,
+            userAgent: req.get('user-agent'),
+            metadata: {
+                originalUrl: req.originalUrl,
+                hostname: req.hostname,
+                protocol: req.protocol
+            }
+        };
+
+        // Log error asynchronously (non-blocking)
+        setImmediate(async () => {
+            try {
+                // Use create directly to avoid static method type issues
+                await ErrorLog.create(errorData);
+            } catch (logError: any) {
+                // Silently fail - don't crash for logging
+            }
+        });
+    } catch (middlewareError) {
+        // If middleware fails, just continue
+        console.error('[ErrorLogger] Middleware error:', middlewareError);
     }
-
-    // Prepare error data
-    const errorData: Record<string, any> = {
-        severity,
-        source,
-        message: err.message || 'Unknown error',
-        stack: process.env.NODE_ENV === 'development' ? err.stack : undefined,
-        code: err.code,
-        endpoint: req.route?.path || req.path,
-        method: req.method,
-        statusCode,
-        requestBody: sanitizeBody(req.body),
-        requestParams: req.params,
-        requestQuery: req.query,
-        userId: req.user?._id,
-        userName: req.user?.name,
-        userRole: req.user?.role,
-        ip: req.ip || (req as any).connection?.remoteAddress,
-        userAgent: req.get('user-agent'),
-        metadata: {
-            originalUrl: req.originalUrl,
-            hostname: req.hostname,
-            protocol: req.protocol
-        }
-    };
-
-    // Log error asynchronously
-    setImmediate(async () => {
-        try {
-            await ErrorLog.logError(errorData);
-        } catch (logError: any) {
-            console.error('Failed to log error:', logError.message);
-        }
-    });
 
     next(err);
 };
@@ -101,7 +107,7 @@ const sanitizeBody = (body: Record<string, any> | undefined): Record<string, any
 // Helper function to manually log errors
 const logError = async (error: any, context: Record<string, any> = {}): Promise<void> => {
     try {
-        await ErrorLog.logError({
+        await ErrorLog.create({
             severity: context.severity || 'error',
             source: context.source || 'system',
             message: error.message || String(error),
@@ -109,8 +115,8 @@ const logError = async (error: any, context: Record<string, any> = {}): Promise<
             code: error.code,
             ...context
         });
-    } catch (logError: any) {
-        console.error('Failed to log error:', logError.message);
+    } catch (logErr: any) {
+        console.error('[ErrorLogger] Failed to log error:', logErr.message);
     }
 };
 

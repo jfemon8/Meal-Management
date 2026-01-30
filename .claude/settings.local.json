@@ -42,7 +42,8 @@
       "Bash(find:*)",
       "Bash(npm run typecheck:*)",
       "WebFetch(domain:www.thedailystar.net)",
-      "WebFetch(domain:www.timeanddate.com)"
+      "WebFetch(domain:www.timeanddate.com)",
+      "Bash(xxd:*)"
     ]
   }
 }
